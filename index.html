@@ -330,19 +330,68 @@ class ZentangleGenerator {
         this.updateRegionUI();
         this.generate();
     }
-    updateRegionUI(){
-        const g=document.getElementById('regionAssignGrid');
-        g.innerHTML='';
-        const cl=['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
-        this.regions.forEach((r,i)=>{
-            const c=document.createElement('div');
-            c.className='region-card';
-            c.innerHTML=`<div style="width:16px;height:16px;border-radius:50%;background:${cl[i%cl.length]};margin:0 auto 6px;"></div><div class="text-xs mb-1" style="color:rgba(255,255,255,0.5);">區域${i+1}</div>`;
-            const s=document.createElement('select');
-            s.innerHTML=this.patterns.map((p,idx)=>`<option value="${idx}" ${this.regionPatternAssign[i]===idx?'selected':''}>${p.name}</option>`).join('');
-            s.onchange=e=>this.regionPatternAssign[i]=+e.target.value;
-            c.appendChild(s);
-            g.appendChild(c);
+   updateRegionUI() {
+        const g = document.getElementById('regionAssignGrid');
+        if (!g) return;
+        g.innerHTML = '';
+        const cl = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe'];
+        
+        this.regions.forEach((r, i) => {
+            const currentIdx = this.regionPatternAssign[i] || 0;
+            const p = this.patterns[currentIdx];
+            
+            const card = document.createElement('div');
+            card.className = 'region-card p-2 bg-white/5 rounded flex flex-col items-center gap-2 relative';
+            
+            // 標籤部分：只保留顏色和區域文字
+            card.innerHTML = `<div class="flex items-center gap-1"><div style="width:8px;height:8px;border-radius:50%;background:${cl[i%cl.length]}"></div><span class="text-[10px] text-white/50">區域 ${i+1}</span></div>`;
+            
+            // 關鍵修改：這是一個可點擊的圖案預覽框，取代原本的「圖案 1」文字
+            const previewBtn = document.createElement('div');
+            previewBtn.className = 'w-12 h-12 border border-white/20 rounded cursor-pointer overflow-hidden bg-white/10 hover:border-blue-500 transition-all flex items-center justify-center';
+            
+            // 渲染目前選中的圖案
+            if(p.isBlank) {
+                previewBtn.innerHTML = '<div class="w-full h-full bg-white"></div>';
+            } else {
+                previewBtn.innerHTML = `<img src="${p.url}" class="w-full h-full object-contain p-1 invert">`;
+            }
+
+            // 建立彈出式選擇清單 (這段是新增的邏輯)
+            const picker = document.createElement('div');
+            picker.className = 'pattern-picker-popup'; // 注意：需配合 CSS 的 display: none 和 active 類別
+            
+            // 將左側「已選取」的圖案放入彈窗
+            Array.from(this.selectedPatterns).forEach(idx => {
+                const opt = document.createElement('div');
+                opt.className = 'picker-option hover:bg-white/20 p-1 cursor-pointer rounded transition-colors';
+                if(this.patterns[idx].isBlank) {
+                    opt.innerHTML = '<div class="w-8 h-8 bg-white mx-auto shadow-sm"></div>';
+                } else {
+                    opt.innerHTML = `<img src="${this.patterns[idx].url}" class="w-8 h-8 object-contain mx-auto invert">`;
+                }
+                
+                opt.onclick = (e) => {
+                    e.stopPropagation();
+                    this.regionPatternAssign[i] = idx; // 更換該區圖案索引
+                    this.updateRegionUI();           // 重新渲染右側 UI
+                    this.generate();                 // 即時重新繪製畫布
+                };
+                picker.appendChild(opt);
+            });
+
+            // 點擊預覽框，切換彈窗顯示
+            previewBtn.onclick = (e) => {
+                e.stopPropagation();
+                const wasActive = picker.classList.contains('active');
+                // 先關掉畫面上所有其他的彈窗，避免疊在一起
+                document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active'));
+                if(!wasActive) picker.classList.add('active');
+            };
+
+            card.appendChild(previewBtn);
+            card.appendChild(picker);
+            g.appendChild(card);
         });
     }
     
