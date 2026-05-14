@@ -204,7 +204,6 @@ loadRrweb();
     </div>
 
   <script>
-<script>
 class ZentangleGenerator {
     constructor() {
         this.mainCanvas = document.getElementById('mainCanvas');
@@ -220,18 +219,11 @@ class ZentangleGenerator {
         this.selectedPatterns = new Set();
         this.regionPatternAssign = [];
         
-        this.settings = { 
-            density: 20, 
-            strokeWidth: 0.5, 
-            threshold: 80, 
-            regionCount: 6, 
-            addShading: true, 
-            showOutline: true, 
-            bgOption: 'white' 
-        };
+        this.settings = { density: 20, strokeWidth: 0.5, threshold: 80, regionCount: 6, addShading: true, showOutline: true, bgOption: 'white' };
         
+        // 修改後的圖案列表：改為讀取 SVG 檔案
         this.patterns = [
-            { name: '空白', url: '', isBlank: true },
+            { name: '空白', url: '/patterns/blank.svg', isBlank: true },
             ...Array.from({ length: 45 }, (_, i) => ({
                 name: `圖案 ${i + 1}`,
                 url: `/patterns/${i + 1}.svg`
@@ -242,11 +234,9 @@ class ZentangleGenerator {
         this.generatePatternGrid();
     }
     
-    isInMask(x, y, m, w) {
-        const i = Math.floor(y) * w + Math.floor(x);
-        return i >= 0 && i < m.length && m[i] > 0;
-    }
-
+    isInMask(x,y,m,w){const i=Math.floor(y)*w+Math.floor(x);return i>=0&&i<m.length&&m[i]>0;}
+    
+    // 修改為異步繪圖函數：使用 SVG Pattern 填充
     async fillRegion(ctx, region, pi, w, h) {
         if (pi < 0 || pi >= this.patterns.length) return;
         const p = this.patterns[pi];
@@ -257,13 +247,16 @@ class ZentangleGenerator {
             img.onload = () => {
                 const d = this.settings.density;
                 const patternCanvas = document.createElement('canvas');
-                patternCanvas.width = d; 
+                patternCanvas.width = d;
                 patternCanvas.height = d;
                 const pCtx = patternCanvas.getContext('2d');
                 pCtx.drawImage(img, 0, 0, d, d);
+
                 const pattern = ctx.createPattern(patternCanvas, 'repeat');
                 ctx.save();
                 ctx.fillStyle = pattern;
+
+                // 逐像素檢查遮罩並著色
                 for (let py = 0; py < h; py++) {
                     for (let px = 0; px < w; px++) {
                         if (this.isInMask(px, py, region, w)) {
@@ -274,33 +267,28 @@ class ZentangleGenerator {
                 ctx.restore();
                 resolve();
             };
-            img.onerror = () => resolve();
             img.src = p.url;
         });
     }
     
-  generatePatternGrid() {
+    generatePatternGrid() {
         const g = document.getElementById('patternGrid');
         g.innerHTML = '';
         this.patterns.forEach((p, i) => {
             const item = document.createElement('div');
-            item.className = `pattern-item relative border-2 border-transparent rounded hover:border-blue-500 cursor-pointer ${this.selectedPatterns.has(i) ? 'selected' : ''}`;
+            item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''}`;
+            item.title = p.name;
             
-            if(p.isBlank) {
-                const emptyBox = document.createElement('div');
-                emptyBox.className = 'w-full h-full bg-white'; 
-                item.appendChild(emptyBox);
-            } else {
-                const img = document.createElement('img');
-                img.src = p.url;
-                img.className = 'w-full h-full object-contain p-1';
-                item.appendChild(img);
-            }
-            
+            const img = document.createElement('img');
+            img.src = p.url;
+            img.className = 'w-full h-full object-contain p-1';
+            if(p.isBlank) img.style.background = 'rgba(0,0,0,0.05)';
+
             const cm = document.createElement('div');
             cm.className = 'check-mark';
             cm.textContent = '✓';
             
+            item.appendChild(img);
             item.appendChild(cm);
             item.onclick = () => this.toggle(i);
             g.appendChild(item);
@@ -308,260 +296,305 @@ class ZentangleGenerator {
         this.updateCount();
     }
     
-    toggle(i) {
-        if(this.selectedPatterns.has(i)) this.selectedPatterns.delete(i);
+    toggle(i){
+        if(this.selectedPatterns.has(i))this.selectedPatterns.delete(i);
         else this.selectedPatterns.add(i);
-        this.generatePatternGrid();
+        document.querySelectorAll('.pattern-item').forEach((el,idx)=>el.classList.toggle('selected',this.selectedPatterns.has(idx)));
         this.updateCount();
-        if(this.originalImage && this.selectedPatterns.size > 0) {
-            this.assign(); 
-            this.generate();
-        }
+        if(this.originalImage&&this.selectedPatterns.size>0){this.assign();this.generate();}
     }
-
-    updateCount() {
-        document.getElementById('selectedCount').textContent = this.selectedPatterns.size;
+    updateCount(){document.getElementById('selectedCount').textContent=this.selectedPatterns.size;}
+    selectAll(){
+        this.patterns.forEach((_,i)=>this.selectedPatterns.add(i));
+        document.querySelectorAll('.pattern-item').forEach(el=>el.classList.add('selected'));
+        this.updateCount();
+        if(this.originalImage){this.assign();this.generate();}
     }
-
-    updateRegionUI() {
-        const g = document.getElementById('regionAssignGrid');
-        g.innerHTML = '';
-        const cl = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
-        
-        this.regions.forEach((r, i) => {
-            const currentIdx = this.regionPatternAssign[i] || 0;
-            const p = this.patterns[currentIdx];
-            
-            const c = document.createElement('div');
-            c.className = 'region-card p-2 bg-white/5 rounded flex flex-col items-center gap-2 relative';
-            
-            c.innerHTML = `
-                <div class="flex items-center gap-2 pointer-events-none">
-                    <div style="width:10px;height:10px;border-radius:50%;background:${cl[i%cl.length]};"></div>
-                    <span class="text-[10px] text-white/50">區域 ${i+1}</span>
-                </div>
-            `;
-            
-            const btn = document.createElement('div');
-            btn.className = 'w-14 h-14 border-2 border-white/20 rounded cursor-pointer overflow-hidden bg-white/10 hover:border-blue-400 transition-all flex items-center justify-center';
-            if(p.isBlank) {
-                btn.innerHTML = '<div class="w-full h-full bg-white"></div>';
-            } else {
-                btn.innerHTML = `<img src="${p.url}" class="w-full h-full object-contain p-1 invert">`;
-            }
-
-            const picker = document.createElement('div');
-            picker.className = 'hidden absolute top-full left-0 z-50 bg-gray-900 border border-white/20 rounded shadow-2xl p-2 grid grid-cols-4 gap-1 w-48 mt-1';
-            
-            Array.from(this.selectedPatterns).forEach(idx => {
-                const opt = document.createElement('div');
-                opt.className = 'w-10 h-10 border border-white/10 rounded hover:bg-white/20 cursor-pointer overflow-hidden';
-                if(this.patterns[idx].isBlank) {
-                    opt.innerHTML = '<div class="w-full h-full bg-white"></div>';
-                } else {
-                    opt.innerHTML = `<img src="${this.patterns[idx].url}" class="w-full h-full object-contain p-1 invert">`;
-                }
-                opt.onclick = (e) => {
-                    e.stopPropagation();
-                    this.regionPatternAssign[i] = idx;
-                    this.updateRegionUI();
-                    this.generate();
-                };
-                picker.appendChild(opt);
-            });
-
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                const wasHidden = picker.classList.contains('hidden');
-                document.querySelectorAll('.region-card > div[style*="z-index"]').forEach(el => el.classList.add('hidden'));
-                if(wasHidden) picker.classList.remove('hidden');
-            };
-
-            c.appendChild(btn);
-            c.appendChild(picker);
-            g.appendChild(c);
-        });
-
-        const closeHandler = () => {
-            document.querySelectorAll('.region-card > div.grid').forEach(el => el.classList.add('hidden'));
-        };
-        document.removeEventListener('click', closeHandler);
-        document.addEventListener('click', closeHandler);
+    clearAll(){
+        this.selectedPatterns.clear();
+        document.querySelectorAll('.pattern-item').forEach(el=>el.classList.remove('selected'));
+        this.updateCount();
     }
-    
-  assign() {
-        const l = Array.from(this.selectedPatterns);
-        if(!l.length) return;
-        this.regionPatternAssign = this.regions.map((_, i) => l[i % l.length]);
+    assign(){
+        const l=Array.from(this.selectedPatterns);
+        if(!l.length)return;
+        this.regionPatternAssign=this.regions.map((_,i)=>l[i%l.length]);
         this.updateRegionUI();
     }
-
-    shuffle() {
-        if(this.regionPatternAssign.length < 2) return;
-        for(let i = this.regionPatternAssign.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.regionPatternAssign[i], this.regionPatternAssign[j]] = [this.regionPatternAssign[j], this.regionPatternAssign[i]];
+    shuffle(){
+        if(this.regionPatternAssign.length<2)return;
+        for(let i=this.regionPatternAssign.length-1;i>0;i--){
+            const j=Math.floor(Math.random()*(i+1));
+            [this.regionPatternAssign[i],this.regionPatternAssign[j]]=[this.regionPatternAssign[j],this.regionPatternAssign[i]];
         }
         this.updateRegionUI();
         this.generate();
     }
-
-    selectAll() {
-        this.patterns.forEach((_, i) => this.selectedPatterns.add(i));
-        this.generatePatternGrid();
-        this.updateCount();
-        if(this.originalImage) { this.assign(); this.generate(); }
+    updateRegionUI(){
+        const g=document.getElementById('regionAssignGrid');
+        g.innerHTML='';
+        const cl=['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
+        this.regions.forEach((r,i)=>{
+            const c=document.createElement('div');
+            c.className='region-card';
+            c.innerHTML=`<div style="width:16px;height:16px;border-radius:50%;background:${cl[i%cl.length]};margin:0 auto 6px;"></div><div class="text-xs mb-1" style="color:rgba(255,255,255,0.5);">區域${i+1}</div>`;
+            const s=document.createElement('select');
+            s.innerHTML=this.patterns.map((p,idx)=>`<option value="${idx}" ${this.regionPatternAssign[i]===idx?'selected':''}>${p.name}</option>`).join('');
+            s.onchange=e=>this.regionPatternAssign[i]=+e.target.value;
+            c.appendChild(s);
+            g.appendChild(c);
+        });
     }
-
-    clearAll() {
-        this.selectedPatterns.clear();
-        this.generatePatternGrid();
-        this.updateCount();
-    }
-
-    bindEvents() {
-        const uz = document.getElementById('uploadZone');
-        const fi = document.getElementById('fileInput');
-        uz.onclick = () => fi.click();
-        uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
-        uz.ondragleave = () => uz.classList.remove('dragover');
-        uz.ondrop = e => { e.preventDefault(); uz.classList.remove('dragover'); if(e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
-        fi.onchange = e => { if(e.target.files[0]) this.load(e.target.files[0]); };
+    
+    bindEvents(){
+        const uz=document.getElementById('uploadZone');
+        const fi=document.getElementById('fileInput');
+        uz.onclick=()=>fi.click();
+        uz.ondragover=e=>{e.preventDefault();uz.classList.add('dragover');};
+        uz.ondragleave=()=>uz.classList.remove('dragover');
+        uz.ondrop=e=>{e.preventDefault();uz.classList.remove('dragover');if(e.dataTransfer.files[0])this.load(e.dataTransfer.files[0]);};
+        fi.onchange=e=>{if(e.target.files[0])this.load(e.target.files[0]);};
         
-        document.getElementById('densitySlider').oninput = e => { this.settings.density = +e.target.value; document.getElementById('densityValue').textContent = e.target.value; };
-        document.getElementById('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value/10; document.getElementById('strokeValue').textContent = (+e.target.value/10).toFixed(1)+'px'; };
-        document.getElementById('thresholdSlider').oninput = e => { this.settings.threshold = +e.target.value; document.getElementById('thresholdValue').textContent = e.target.value; };
-        document.getElementById('regionSlider').oninput = e => { this.settings.regionCount = +e.target.value; document.getElementById('regionValue').textContent = e.target.value; };
+        document.getElementById('densitySlider').oninput=e=>{this.settings.density=+e.target.value;document.getElementById('densityValue').textContent=e.target.value;};
+        document.getElementById('strokeSlider').oninput=e=>{this.settings.strokeWidth=+e.target.value/10;document.getElementById('strokeValue').textContent=(+e.target.value/10).toFixed(1)+'px';};
+        document.getElementById('thresholdSlider').oninput=e=>{this.settings.threshold=+e.target.value;document.getElementById('thresholdValue').textContent=e.target.value;};
+        document.getElementById('regionSlider').oninput=e=>{this.settings.regionCount=+e.target.value;document.getElementById('regionValue').textContent=e.target.value;};
+        document.getElementById('addShading').onchange=e=>{this.settings.addShading=e.target.checked;if(this.originalImage)this.generate();};
+        document.getElementById('showOutline').onchange=e=>{this.settings.showOutline=e.target.checked;if(this.originalImage)this.generate();};
+        document.getElementById('bgOption').onchange=e=>{this.settings.bgOption=e.target.value;if(this.originalImage)this.generate();};
         
-        document.getElementById('addShading').onchange = e => { this.settings.addShading = e.target.checked; if(this.originalImage) this.generate(); };
-        document.getElementById('showOutline').onchange = e => { this.settings.showOutline = e.target.checked; if(this.originalImage) this.generate(); };
-        document.getElementById('bgOption').onchange = e => { this.settings.bgOption = e.target.value; if(this.originalImage) this.generate(); };
+        document.getElementById('generateBtn').onclick=()=>this.generate();
+        document.getElementById('downloadBtn').onclick=()=>this.dl();
+        document.getElementById('selectAllBtn').onclick=()=>this.selectAll();
+        document.getElementById('clearAllBtn').onclick=()=>this.clearAll();
+        document.getElementById('shuffleBtn').onclick=()=>this.shuffle();
+        document.getElementById('applyAssignBtn').onclick=()=>this.generate();
         
-        document.getElementById('generateBtn').onclick = () => this.generate();
-        document.getElementById('downloadBtn').onclick = () => this.dl();
-        document.getElementById('selectAllBtn').onclick = () => this.selectAll();
-        document.getElementById('clearAllBtn').onclick = () => this.clearAll();
-        document.getElementById('shuffleBtn').onclick = () => this.shuffle();
-        document.getElementById('applyAssignBtn').onclick = () => this.generate();
-
-        document.querySelectorAll('.tab-btn').forEach(b => {
-            b.onclick = e => {
-                document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b=>{
+            b.onclick=e=>{
+                document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
                 e.target.classList.add('active');
-                const v = e.target.dataset.view;
-                document.getElementById('regionAssignView').style.display = v === 'regions' ? 'block' : 'none';
-                document.getElementById('regionCanvas').style.display = v === 'regions' ? 'block' : 'none';
-                document.getElementById('mainCanvas').style.display = v === 'regions' ? 'none' : 'block';
+                const v=e.target.dataset.view;
+                document.getElementById('regionAssignView').style.display=v==='regions'?'block':'none';
+                document.getElementById('regionCanvas').style.display=v==='regions'?'block':'none';
+                document.getElementById('mainCanvas').style.display=v==='regions'?'none':'block';
             };
         });
     }
-
-    load(f) {
-        const r = new FileReader();
-        r.onload = e => {
-            const im = new Image();
-            im.onload = () => {
-                this.originalImage = im;
-                let w = im.width, h = im.height;
-                if(w > 800 || h > 800) { if(w > h) { h = h/w * 800; w = 800; } else { w = w/h * 800; h = 800; } }
-                [this.mainCanvas, this.regionCanvas, this.originalCanvas].forEach(c => { c.width = w; c.height = h; });
-                this.originalCtx.drawImage(im, 0, 0, w, h);
-                document.getElementById('originalCanvas').style.display = 'block';
-                document.getElementById('originalPlaceholder').style.display = 'none';
-                document.getElementById('generateBtn').disabled = false;
-                if(this.selectedPatterns.size === 0) this.selectAll();
+    
+    load(f){
+        const r=new FileReader();
+        r.onload=e=>{
+            const im=new Image();
+            im.onload=()=>{
+                this.originalImage=im;
+                let w=im.width,h=im.height;
+                if(w>800||h>800){if(w>h){h=h/w*800;w=800;}else{w=w/h*800;h=800;}}
+                [this.mainCanvas,this.regionCanvas,this.originalCanvas].forEach(c=>{c.width=w;c.height=h;});
+                this.originalCtx.drawImage(im,0,0,w,h);
+                document.getElementById('originalCanvas').style.display='block';
+                document.getElementById('originalPlaceholder').style.display='none';
+                document.getElementById('generateBtn').disabled=false;
+                if(this.selectedPatterns.size===0)this.selectAll();
                 else this.generate();
             };
-            im.src = e.target.result;
+            im.src=e.target.result;
         };
         r.readAsDataURL(f);
     }
     
-   async generate() {
-        if(!this.originalImage || !this.selectedPatterns.size) return;
-        document.getElementById('processingOverlay').style.display = 'flex';
-        const w = this.mainCanvas.width, h = this.mainCanvas.height;
-        this.mask = this.maskExtract(w, h);
-        this.regions = this.seg(w, h);
-        if(this.regionPatternAssign.length !== this.regions.length) this.assign();
-        this.drawReg(w, h);
-        await this.render(w, h);
-        document.getElementById('processingOverlay').style.display = 'none';
+    async generate(){
+        if(!this.originalImage||!this.selectedPatterns.size)return;
+        document.getElementById('processingOverlay').style.display='flex';
+        document.getElementById('placeholderText').style.display='none';
+        document.getElementById('mainCanvas').style.display='block';
+        await new Promise(r=>setTimeout(r,30));
+        const w=this.mainCanvas.width,h=this.mainCanvas.height;
+        document.getElementById('processingText').textContent='提取遮罩...';
+        await new Promise(r=>setTimeout(r,10));
+        this.mask=this.maskExtract(w,h);
+        document.getElementById('processingText').textContent='分割...';
+        await new Promise(r=>setTimeout(r,10));
+        this.regions=this.seg(w,h);
+        if(this.regionPatternAssign.length!==this.regions.length)this.assign();
+        this.drawReg(w,h);
+        document.getElementById('processingText').textContent='生成中 (請稍候)...';
+        await new Promise(r=>setTimeout(r,10));
+        
+        // 呼叫異步 render 並等待完成
+        await this.render(w,h);
+        
+        document.getElementById('processingOverlay').style.display='none';
     }
-
-    maskExtract(w, h) {
-        const t = document.createElement('canvas'); t.width = w; t.height = h;
-        const c = t.getContext('2d'); c.drawImage(this.originalImage, 0, 0, w, h);
-        const d = c.getImageData(0, 0, w, h).data;
-        const m = new Uint8Array(w * h);
-        for(let i = 0; i < w * h; i++) {
-            const idx = i * 4;
-            const r = d[idx], g = d[idx+1], b = d[idx+2];
-            const isWhite = r > 220 && g > 220 && b > 220;
-            m[i] = !isWhite ? 255 : 0;
+    
+    maskExtract(w,h){
+        const t=document.createElement('canvas');
+        t.width=w;t.height=h;
+        const c=t.getContext('2d');
+        c.drawImage(this.originalImage,0,0,w,h);
+        const d=c.getImageData(0,0,w,h).data;
+        const m=new Uint8Array(w*h);
+        for(let i=0;i<w*h;i++){
+            const idx=i*4;
+            const r=d[idx],g=d[idx+1],b=d[idx+2];
+            const light=r>220&&g>220&&b>220;
+            const nearW=Math.abs(r-g)<30&&Math.abs(g-b)<30&&r>200;
+            m[i]=(!light&&!nearW)?255:0;
+        }
+        const tp=new Uint8Array(w*h);
+        for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){let mx=0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)mx=Math.max(mx,m[(y+dy)*w+x+dx]);tp[y*w+x]=mx;}
+        for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){let mn=255;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)mn=Math.min(mn,tp[(y+dy)*w+x+dx]);m[y*w+x]=mn;}
+        const vs=new Uint8Array(w*h);
+        const q=[];
+        for(let x=0;x<w;x++){if(!m[x])q.push([x,0]);if(!m[(h-1)*w+x])q.push([x,h-1]);}
+        for(let y=0;y<h;y++){if(!m[y*w])q.push([0,y]);if(!m[y*w+w-1])q.push([w-1,y]);}
+        while(q.length){
+            const[x,y]=q.shift();
+            const idx=y*w+x;
+            if(x<0||x>=w||y<0||y>=h||vs[idx]||m[idx])continue;
+            vs[idx]=1;
+            m[idx]=0;
+            q.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
         }
         return m;
     }
-
-    seg(w, h) {
-        const rg = []; const n = this.settings.regionCount;
-        let cx = 0, cy = 0, cnt = 0;
-        for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) if(this.mask[y * w + x]) { cx += x; cy += y; cnt++; }
-        if(!cnt) return rg; cx /= cnt; cy /= cnt;
-        const sd = [];
-        for(let i = 0; i < n; i++) {
-            const a = Math.PI * 2 / n * i;
-            sd.push({ x: cx + Math.random() * w * 0.2 * Math.cos(a), y: cy + Math.random() * h * 0.2 * Math.sin(a) });
+    
+    seg(w,h){
+        const rg=[];
+        const n=this.settings.regionCount;
+        let cx=0,cy=0,cnt=0;
+        for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(this.mask[y*w+x]){cx+=x;cy+=y;cnt++;}
+        if(!cnt)return rg;
+        cx/=cnt;cy/=cnt;
+        const sd=[];
+        for(let i=0;i<n;i++){
+            const a=Math.PI*2/n*i+Math.random()*0.5;
+            sd.push({x:cx+Math.random()*Math.min(w,h)*0.3*Math.cos(a),y:cy+Math.random()*Math.min(w,h)*0.3*Math.sin(a)});
         }
-        for(let i = 0; i < n; i++) {
-            const r = new Uint8Array(w * h);
-            for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) if(this.mask[y * w + x]) {
-                let mn = Infinity, ns = 0;
-                sd.forEach((s, j) => { const d = Math.hypot(x - s.x, y - s.y); if(d < mn) { mn = d; ns = j; } });
-                if(ns === i) r[y * w + x] = 255;
+        for(let i=0;i<n;i++){
+            const r=new Uint8Array(w*h);
+            for(let y=0;y<h;y++){
+                for(let x=0;x<w;x++){
+                    if(this.mask[y*w+x]){
+                        let mn=Infinity,ns=0;
+                        sd.forEach((s,j)=>{const d=Math.hypot(x-s.x,y-s.y);if(d<mn){mn=d;ns=j;}});
+                        if(ns===i)r[y*w+x]=255;
+                    }
+                }
             }
-            rg.push({ mask: r });
+            rg.push({mask:r});
         }
         return rg;
     }
-
-    drawReg(w, h) {
-        this.regionCtx.clearRect(0, 0, w, h);
-        const cl = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
-        this.regions.forEach((r, i) => {
-            this.regionCtx.fillStyle = cl[i % cl.length];
-            for(let y = 0; y < h; y++) for(let x = 0; x < w; x++) if(r.mask[y * w + x]) this.regionCtx.fillRect(x, y, 1, 1);
+    
+    drawReg(w,h){
+        this.regionCtx.clearRect(0,0,w,h);
+        const cl=['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
+        this.regions.forEach((r,i)=>{
+            this.regionCtx.fillStyle=cl[i%cl.length];
+            for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(r.mask[y*w+x])this.regionCtx.fillRect(x,y,1,1);
         });
     }
-
-    async render(w, h) {
-        const t = document.createElement('canvas'); t.width = w; t.height = h;
-        const tc = t.getContext('2d'); tc.fillStyle = '#fff'; tc.fillRect(0, 0, w, h);
+    
+    async render(w,h){
+        const t=document.createElement('canvas');
+        t.width=w;t.height=h;
+        const tc=t.getContext('2d');
         
-        for(let i = 0; i < this.regions.length; i++) {
-            await this.fillRegion(tc, this.regions[i].mask, this.regionPatternAssign[i] || 0, w, h);
+        tc.fillStyle='#fff';
+        tc.fillRect(0,0,w,h);
+        
+        // 異步模式填滿所有區域
+        for (let i = 0; i < this.regions.length; i++) {
+            const r = this.regions[i];
+            const pi = this.regionPatternAssign[i] || 0;
+            await this.fillRegion(tc, r.mask, pi, w, h);
         }
         
-        if(this.settings.showOutline) {
-            const ol = document.createElement('canvas'); ol.width = w; ol.height = h;
-            const oc = ol.getContext('2d'); oc.drawImage(this.originalImage, 0, 0, w, h);
-            const ed = oc.getImageData(0, 0, w, h); const edd = ed.data; const od = oc.getImageData(0, 0, w, h).data;
-            for(let i = 0; i < w * h; i++) {
-                const idx = i * 4;
-                const g = 0.299 * od[idx] + 0.587 * od[idx+1] + 0.114 * od[idx+2];
-                if(this.mask[i] && g < this.settings.threshold) { edd[idx] = edd[idx+1] = edd[idx+2] = 0; edd[idx+3] = 255; }
-                else edd[idx+3] = 0;
+        if(this.settings.addShading){
+            const id=tc.getImageData(0,0,w,h);
+            const dd=id.data;
+            for(let y=1;y<h-1;y++){
+                for(let x=1;x<w-1;x++){
+                    const idx=y*w+x;
+                    if(this.mask[idx]){
+                        let ed=false,cr=-1;
+                        for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[idx]){cr=r;break;}
+                        if(cr>=0){
+                            outer:for(let dy=-1;dy<=1;dy++){
+                                for(let dx=-1;dx<=1;dx++){
+                                    let nr=-1;
+                                    for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[(y+dy)*w+x+dx]){nr=r;break;}
+                                    if(nr !== cr){ed=true;break outer;}
+                                }
+                            }
+                        }
+                        if(ed){
+                            const p=idx*4;
+                            dd[p]=Math.max(0,dd[p]-50);
+                            dd[p+1]=Math.max(0,dd[p+1]-50);
+                            dd[p+2]=Math.max(0,dd[p+2]-50);
+                        }
+                    }
+                }
             }
-            oc.putImageData(ed, 0, 0); tc.drawImage(ol, 0, 0);
+            tc.putImageData(id,0,0);
         }
-        this.mainCtx.clearRect(0, 0, w, h);
-        this.mainCtx.drawImage(t, 0, 0);
+        
+        if(this.settings.showOutline){
+            const ol=document.createElement('canvas');
+            ol.width=w;ol.height=h;
+            const oc=ol.getContext('2d');
+            oc.drawImage(this.originalImage,0,0,w,h);
+            const od=oc.getImageData(0,0,w,h).data;
+            const ed=oc.getImageData(0,0,w,h);
+            const edd=ed.data;
+            for(let i=0;i<w*h;i++){
+                const idx=i*4;
+                const g=0.299*od[idx]+0.587*od[idx+1]+0.114*od[idx+2];
+                if(this.mask[i]){
+                    if(g<this.settings.threshold){
+                        edd[idx]=edd[idx+1]=edd[idx+2]=0;
+                        edd[idx+3]=255;
+                    }else edd[idx+3]=0;
+                }else edd[idx+3]=0;
+            }
+            oc.putImageData(ed,0,0);
+            tc.drawImage(ol,0,0);
+        }
+        
+        this.mainCtx.clearRect(0,0,w,h);
+        if(this.settings.bgOption==='white'){
+            this.mainCtx.fillStyle='#fff';
+            this.mainCtx.fillRect(0,0,w,h);
+        }
+        
+        const fid=tc.getImageData(0,0,w,h);
+        const fdd=fid.data;
+        const out=this.mainCtx.createImageData(w,h);
+        const odout=out.data;
+        
+        for(let i=0;i<w*h;i++){
+            const idx=i*4;
+            if(this.mask[i]){
+                odout[idx]=fdd[idx];
+                odout[idx+1]=fdd[idx+1];
+                odout[idx+2]=fdd[idx+2];
+                odout[idx+3]=fdd[idx+3];
+            }else if(this.settings.bgOption==='white'){
+                odout[idx]=odout[idx+1]=odout[idx+2]=255;
+                odout[idx+3]=255;
+            }else{
+                odout[idx+3]=0;
+            }
+        }
+        this.mainCtx.putImageData(out,0,0);
     }
-
-    dl() {
-        const lk = document.createElement('a');
-        lk.download = `zentangle-${Date.now()}.png`;
-        lk.href = this.mainCanvas.toDataURL();
+    
+    dl(){
+        const lk=document.createElement('a');
+        lk.download=`zentangle-${Date.now()}.png`;
+        lk.href=this.mainCanvas.toDataURL('image/png');
         lk.click();
     }
 }
