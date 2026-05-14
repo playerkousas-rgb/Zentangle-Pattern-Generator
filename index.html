@@ -545,40 +545,33 @@ class ZentangleGenerator {
         });
     }
     
-  async render(w, h) {
-        const t = document.createElement('canvas'); 
-        t.width = w; 
-        t.height = h;
-        const tc = t.getContext('2d'); 
+  async render(w,h){
+
+        const t=document.createElement('canvas');
+
+        t.width=w;t.height=h;
+
+        const tc=t.getContext('2d');
+
         
-        // 1. 確保底色是純白，這能解決「底色發灰」的第一步
-        tc.fillStyle = '#ffffff'; 
-        tc.fillRect(0, 0, w, h);
+
+        tc.fillStyle='#fff';
+
+        tc.fillRect(0,0,w,h);
+
         
-        // 2. 填滿所有區域的禪繞圖案
+
+        // 異步模式填滿所有區域
+
         for (let i = 0; i < this.regions.length; i++) {
+
             const r = this.regions[i];
-            const pi = this.regionPatternAssign[i];
-            // 只有當該區域有分配圖案時才繪製
-            if (pi !== undefined) {
-                await this.fillRegion(tc, r.mask, pi, w, h);
-            }
+
+            const pi = this.regionPatternAssign[i] || 0;
+
+            await this.fillRegion(tc, r.mask, pi, w, h);
+
         }
-        
-        // 3. 【關鍵修正】疊加原始輪廓線
-        // 使用 'multiply' (正片疊底) 模式，只讓黑色的線條留下來，
-        // 原始圖片中灰灰黃黃的底色會被過濾掉，不會遮蓋圖案。
-        if (this.settings.showOutline && this.originalCanvas) {
-            tc.save();
-            tc.globalCompositeOperation = 'multiply'; 
-            tc.drawImage(this.originalCanvas, 0, 0, w, h); 
-            tc.restore();
-        }
-        
-        // 4. 最後把結果畫到主畫布上
-        this.mainCtx.clearRect(0, 0, w, h);
-        this.mainCtx.drawImage(t, 0, 0);
-    }
         
         if(this.settings.addShading){
             const id=tc.getImageData(0,0,w,h);
