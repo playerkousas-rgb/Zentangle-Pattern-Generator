@@ -219,8 +219,8 @@ class ZentangleGenerator {
         this.selectedPatterns = new Set();
         this.regionPatternAssign = [];
         
-        this.settings = { patternSize: 80, strokeWidth: 0.5, threshold: 80, regionCount: 6, addShading: true, showOutline: true, bgOption: 'white' };
-        
+        this.settings = { density: 20, strokeWidth: 0.5, threshold: 80, regionCount: 6, addShading: true, showOutline: true, bgOption: 'white' };
+         
         // 修改後的圖案列表：改為讀取 SVG 檔案
         this.patterns = [
             { name: '空白', url: '/patterns/blank.svg', isBlank: true },
