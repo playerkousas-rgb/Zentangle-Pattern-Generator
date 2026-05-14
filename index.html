@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>禪繞畫工具 - Zentangle Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: #02133E; color: #fff; min-height: 100vh; }
+        .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%); color: #000; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.3s ease; color: #fff; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #00d4ff; cursor: pointer; }
+        .preview-wrapper { background: #fff; border-radius: 12px; overflow: hidden; }
+        .preview-wrapper canvas { display: block; width: 100%; height: auto; }
+        .pattern-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .pattern-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; cursor: pointer; overflow: hidden; position: relative; }
+        .pattern-item:hover { transform: scale(1.05); }
+        .pattern-item.selected { border-color: #333; }
+        .pattern-item .check-mark { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; background: #333; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 9px; color: #fff; }
+        .pattern-item.selected .check-mark { display: flex; }
+        .upload-zone { border: 2px dashed rgba(255, 255, 255, 0.3); border-radius: 16px; transition: all 0.3s ease; cursor: pointer; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
+        .processing-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .spinner { width: 50px; height: 50px; border: 3px solid #ddd; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .tab-btn { padding: 8px 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); cursor: pointer; border: none; }
+        .tab-btn.active { background: #00d4ff; color: #000; }
+        .region-assign { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+        .region-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px; text-align: center; }
+        .region-card select { width: 100%; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px; color: #fff; padding: 4px; font-size: 10px; }
+        .footer-text { color: rgba(255, 255, 255, 0.4); font-size: 12px; }
+        .placeholder { color: #999; text-align: center; padding: 60px 20px; }
+        .guide-box { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 12px; margin-top: 12px; }
+        .guide-box h3 { color: #00d4ff; font-size: 13px; margin-bottom: 6px; }
+        .guide-box ul { color: rgba(255, 255, 255, 0.7); font-size: 11px; padding-left: 16px; }
+        .guide-box li { margin-bottom: 3px; }
+    </style>
+  <script data-arena-recording="true">(function(){
+"use strict";
+var SK="__arena_rec",RRWEB_CDN="https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.4/dist/rrweb.min.js";
+var MAX_RECORDING_MS=600000,MAX_RRWEB_EVENTS=30000,MAX_INTERACTIONS=5000,MAX_CURSOR_POINTS=10000,recStopped=false;
+var stored=null;try{var raw=sessionStorage.getItem(SK);if(raw)stored=JSON.parse(raw);}catch(ex){}
+var meta=stored?stored.m||null:null,rrwebEvents=stored?stored.r||[]:[],rrwebStarted=false,startTime=stored?stored.st||Date.now():Date.now();
+var interactions=stored?stored.i||[]:[],cursorPath=stored?stored.c||[]:[],lastCursorSample=0,lastScrollSample=0;
+var pageHeight=document.documentElement.scrollHeight;
+var viewport={width:window.innerWidth,height:window.innerHeight};
+function isCapped(){if(recStopped)return true;if(Date.now()-startTime>=MAX_RECORDING_MS){recStopped=true;return true;}return false;}
+function persist(){try{var d=JSON.stringify({r:rrwebEvents,i:interactions,c:cursorPath,m:meta,st:startTime});sessionStorage.setItem(SK,d);}catch(ex){rrwebEvents=rrwebEvents.slice(Math.floor(rrwebEvents.length/2));try{sessionStorage.setItem(SK,JSON.stringify({r:rrwebEvents,i:interactions,c:cursorPath,m:meta,st:startTime}));}catch(ex2){}}}
+setInterval(persist,5000);
+window.addEventListener("resize",function(){viewport={width:window.innerWidth,height:window.innerHeight};pageHeight=document.documentElement.scrollHeight;});
+document.addEventListener("click",function(e){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;var el=e.target;var tag=el.tagName?el.tagName.toLowerCase():"";var text=(el.textContent||"").trim().substring(0,80);var classes=el.className&&typeof el.className==="string"?el.className.substring(0,120):"";interactions.push({type:"click",t:Date.now()-startTime,x:Math.round(e.clientX),y:Math.round(e.clientY),element:{tag:tag,text:text,classes:classes}});},true);
+window.addEventListener("scroll",function(){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;var now=Date.now();if(now-lastScrollSample<200)return;lastScrollSample=now;var scrollY=Math.round(window.scrollY||window.pageYOffset||0);var depthPct=pageHeight>viewport.height?Math.min(100,Math.round(((scrollY+viewport.height)/pageHeight)*100)):100;interactions.push({type:"scroll",t:now-startTime,y:scrollY,depth_pct:depthPct});},{passive:true});
+document.addEventListener("mousemove",function(e){if(isCapped()||cursorPath.length>=MAX_CURSOR_POINTS)return;var now=Date.now();if(now-lastCursorSample<250)return;lastCursorSample=now;cursorPath.push([Math.round(e.clientX),Math.round(e.clientY),now-startTime]);},{passive:true});
+document.addEventListener("keydown",function(e){if(isCapped()||interactions.length>=MAX_INTERACTIONS)return;if(e.target&&(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"))return;interactions.push({type:"keydown",t:Date.now()-startTime,key:e.key});},true);
+function buildAnalytics(){if(!meta)return null;var ph=document.documentElement.scrollHeight;var maxScroll=0,clickElements={},firstClick=null,firstScroll=null,totalDistance=0;for(var i=0;i<interactions.length;i++){var ev=interactions[i];if(ev.type==="scroll"){if(ev.depth_pct>maxScroll)maxScroll=ev.depth_pct;if(!firstScroll)firstScroll=ev.t;}if(ev.type==="click"){if(!firstClick)firstClick=ev.t;var key=ev.element.tag+":"+ev.element.text.substring(0,30);clickElements[key]=true;}}for(var j=1;j<cursorPath.length;j++){var dx=cursorPath[j][0]-cursorPath[j-1][0];var dy=cursorPath[j][1]-cursorPath[j-1][1];totalDistance+=Math.sqrt(dx*dx+dy*dy);}var duration=Date.now()-startTime;var clickHeatmap=[];for(var k=0;k<interactions.length;k++){if(interactions[k].type==="click")clickHeatmap.push([interactions[k].x,interactions[k].y]);}return{generation_id:meta.generationId,tournament_id:meta.tournamentId,started_at:new Date(startTime).toISOString(),ended_at:new Date().toISOString(),duration_ms:duration,viewport:viewport,page_height:ph,interactions:interactions,cursor_path:cursorPath,click_heatmap:clickHeatmap,summary:{total_clicks:clickHeatmap.length,total_scrolls:interactions.filter(function(e){return e.type==="scroll";}).length,max_scroll_depth_pct:maxScroll,unique_elements_clicked:Object.keys(clickElements).length,time_to_first_click_ms:firstClick,time_to_first_scroll_ms:firstScroll,cursor_distance_px:Math.round(totalDistance),active_time_ms:duration}};}
+function loadRrweb(){if(rrwebStarted)return;rrwebStarted=true;var s=document.createElement("script");s.src=RRWEB_CDN;s.onload=function(){var rec=(window.rrweb&&window.rrweb.record)||window.rrwebRecord;if(!rec)return;rec({emit:function(event){if(rrwebEvents.length>=MAX_RRWEB_EVENTS||isCapped())return;rrwebEvents.push(event);}});};s.onerror=function(){};document.head.appendChild(s);}
+window.addEventListener("message",function(e){if(!e.data||typeof e.data.type!=="string")return;if(e.data.type==="arena:init"){if(!meta)startTime=Date.now();meta={generationId:e.data.generationId||e.data.modelId,tournamentId:e.data.tournamentId};persist();loadRrweb();if(e.source)e.source.postMessage({type:"arena:init-ack",generationId:meta.generationId},"*");}if(e.data.type==="arena:flush"){var resp={type:"arena:recording-data",generationId:meta?meta.generationId:null,rrwebEvents:rrwebEvents,analytics:buildAnalytics()};try{sessionStorage.removeItem(SK);}catch(ex){}if(e.source)e.source.postMessage(resp,"*");}});
+loadRrweb();
+})();</script>
+  <script data-arena-views="true">(function(){var isTop=false;try{isTop=window.self===window.top;}catch(e){}if(!isTop)return;window.__ARENA_META={generationId:"glm-5",tournamentId:"d70e94d6-e42e-46a5-946a-2554474d920e"};var payload={tournamentId:"d70e94d6-e42e-46a5-946a-2554474d920e",modelId:"glm-5"};try{var r=document.referrer;if(r){var u=new URL(r);payload.referrerDomain=u.hostname;}}catch(e){}try{var vid=null;try{vid=localStorage.getItem('arena_vid');}catch(e){}if(!vid){vid=typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2)).slice(0,32);try{localStorage.setItem('arena_vid',vid);}catch(e){}}if(vid)payload.viewerId=vid;}catch(e){}try{fetch("https://www.designarena.ai/api/agon/page-views",{"method":"POST","headers":{"Content-Type":"application/json"},"body":JSON.stringify(payload),"keepalive":true});}catch(e){}})();</script>
+</head>
+<body style="background: #02133E;">
+    <div class="min-h-screen p-4 md:p-8">
+        <header class="max-w-7xl mx-auto mb-6">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
+                    <p style="color: rgba(255,255,255,0.5);" class="mt-1">Zentangle Pattern Generator</p>
+                </div>
+                <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    下載 PNG
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto">
+            <div class="grid lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-1 space-y-5">
+                    <div class="glass-card p-5">
+                        <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
+                        <div id="uploadZone" class="upload-zone p-6 text-center">
+                            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                            <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊或拖放圖片</p>
+                        </div>
+                        <div class="guide-box">
+                            <h3>📸 上傳指引</h3>
+                            <ul>
+                                <li>主體與背景對比明顯</li>
+                                <li>白色/淺色背景最佳</li>
+                                <li>輪廓清晰完整</li>
+                                <li>卡通插畫類效果最好</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-5">
+                        <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/42)</h2>
+                        <div id="patternGrid" class="pattern-grid"></div>
+                        <div class="mt-3 flex gap-2">
+                            <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
+                            <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-5">
+                        <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">設定</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">分區數量</label><span id="regionValue" class="text-xs" style="color: #00d4ff;">6</span></div>
+                                <input type="range" id="regionSlider" min="2" max="12" value="6">
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">圖案大小</label><span id="densityValue" class="text-xs" style="color: #00d4ff;">20</span></div>
+                                <input type="range" id="densitySlider" min="15" max="30" value="20">
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">線條粗細</label><span id="strokeValue" class="text-xs" style="color: #00d4ff;">0.5px</span></div>
+                                <input type="range" id="strokeSlider" min="3" max="15" value="5">
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">邊緣檢測</label><span id="thresholdValue" class="text-xs" style="color: #00d4ff;">80</span></div>
+                                <input type="range" id="thresholdSlider" min="30" max="180" value="80">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="addShading" checked class="w-4 h-4">
+                                <label for="addShading" class="text-xs" style="color: rgba(255,255,255,0.6);">陰影效果</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="showOutline" checked class="w-4 h-4">
+                                <label for="showOutline" class="text-xs" style="color: rgba(255,255,255,0.6);">輪廓線</label>
+                            </div>
+                            <div>
+                                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">背景</label>
+                                <select id="bgOption" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                                    <option value="white">主體外全白</option>
+                                    <option value="transparent">主體外透明</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="generateBtn" class="btn-primary w-full mt-4 py-2 rounded-lg" disabled>生成</button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 space-y-5">
+                    <div class="glass-card p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-base font-semibold" style="color: #00d4ff;">預覽</h2>
+                            <div class="flex gap-2">
+                                <button class="tab-btn active" data-view="final">結果</button>
+                                <button class="tab-btn" data-view="regions">分區</button>
+                            </div>
+                        </div>
+                        <div id="previewContainer" class="preview-wrapper relative" style="min-height: 350px;">
+                            <div id="placeholderText" class="placeholder absolute inset-0 flex items-center justify-center">
+                                <div>
+                                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <p style="font-size: 14px;">上傳圖片開始</p>
+                                </div>
+                            </div>
+                            <canvas id="mainCanvas" style="display: none;"></canvas>
+                            <canvas id="regionCanvas" style="display: none; position: absolute; top: 0; left: 0;"></canvas>
+                            <div id="processingOverlay" class="processing-overlay" style="display: none;">
+                                <div class="text-center">
+                                    <div class="spinner mx-auto mb-3"></div>
+                                    <p style="color: #333; font-size: 14px;" id="processingText">處理中...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="regionAssignView" class="glass-card p-5" style="display: none;">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-base font-semibold" style="color: #00d4ff;">分區設定</h2>
+                            <button id="shuffleBtn" class="btn-secondary px-3 py-1 rounded text-xs">隨機置換</button>
+                        </div>
+                        <div id="regionAssignGrid" class="region-assign"></div>
+                        <button id="applyAssignBtn" class="btn-primary w-full mt-3 py-2 rounded-lg text-sm">應用</button>
+                    </div>
+
+                    <div class="glass-card p-5">
+                        <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">原始圖片</h2>
+                        <div class="preview-wrapper">
+                            <canvas id="originalCanvas" style="display: none;"></canvas>
+                            <div id="originalPlaceholder" class="placeholder" style="padding: 40px;">尚未上傳</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="max-w-7xl mx-auto mt-8 text-center">
+            <p class="footer-text">COPY RIGHT 2026 SKWSCOUT</p>
+        </footer>
+    </div>
+
+    <script>
+class ZentangleGenerator {
+    constructor() {
+        this.mainCanvas = document.getElementById('mainCanvas');
+        this.regionCanvas = document.getElementById('regionCanvas');
+        this.originalCanvas = document.getElementById('originalCanvas');
+        this.mainCtx = this.mainCanvas.getContext('2d');
+        this.regionCtx = this.regionCanvas.getContext('2d');
+        this.originalCtx = this.originalCanvas.getContext('2d');
+        
+        this.originalImage = null;
+        this.mask = null;
+        this.regions = [];
+        this.selectedPatterns = new Set();
+        this.regionPatternAssign = [];
+        
+        this.settings = { density: 20, strokeWidth: 0.5, threshold: 80, regionCount: 6, addShading: true, showOutline: true, bgOption: 'white' };
+        
+        this.patterns = [
+            { name: 'Printemps', fill: (c,x,y,s) => { c.beginPath(); for(let a=0;a<Math.PI*4;a+=0.1){const r=s*0.4*a/(Math.PI*4); c.lineTo(x+r*Math.cos(a),y+r*Math.sin(a)); } c.stroke(); }},
+            { name: 'Crescent Moon', fill: (c,x,y,s) => { for(let i=0;i<4;i++){ c.beginPath(); c.arc(x,y+i*s*0.25,s*0.35*(1-i*0.12),Math.PI*0.15,Math.PI*0.85); c.stroke(); }}},
+            { name: 'Hollibaugh', fill: (c,x,y,s) => { const w=s*0.15; for(let i=-1;i<=1;i++){ c.fillRect(x-s*0.5,y+i*s*0.35-w,s,w*2); } for(let i=-1;i<=1;i++){ c.fillRect(x+i*s*0.35-w,y-s*0.5,w*2,s); }}},
+            { name: 'Tipple', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*(0.12+Math.random()*0.18),0,Math.PI*2); c.stroke(); }},
+            { name: 'Mooka', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y+s*0.45); c.bezierCurveTo(x-s*0.6,y+s*0.3,x-s*0.4,y-s*0.5,x,y-s*0.45); c.bezierCurveTo(x+s*0.4,y-s*0.5,x+s*0.6,y+s*0.3,x,y+s*0.45); c.stroke(); }},
+            { name: 'Paradox', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.45); c.lineTo(x+s*0.45,y+s*0.45); c.lineTo(x-s*0.45,y+s*0.45); c.closePath(); c.stroke(); for(let i=1;i<4;i++){ c.beginPath(); c.moveTo(x-s*0.45+s*0.45*i*2,y+s*0.45-s*0.45*i*2); c.lineTo(x,y+s*0.45-s*0.45*i); c.stroke(); }}},
+            { name: 'Flux', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x-s*0.5,y); c.quadraticCurveTo(x,y-s*0.25,x+s*0.5,y); c.stroke(); c.beginPath(); c.moveTo(x-s*0.5,y); c.quadraticCurveTo(x,y+s*0.12,x+s*0.5,y); c.stroke(); }},
+            { name: 'Shattuck', fill: (c,x,y,s) => { for(let i=0;i<3;i++){ c.beginPath(); c.moveTo(x-s*0.4,y+i*s*0.2); c.lineTo(x,y+i*s*0.2+s*0.2); c.lineTo(x+s*0.4,y+i*s*0.2); c.stroke(); }}},
+            { name: 'Knightsbridge', fill: (c,x,y,s) => { const cs=s*0.35; for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){ if((i+j+10)%2===0) c.fillRect(x+i*cs-cs/2,y+j*cs-cs/2,cs,cs); }}},
+            { name: 'Keeko', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.35); c.lineTo(x+s*0.35,y); c.lineTo(x,y+s*0.35); c.lineTo(x-s*0.35,y); c.closePath(); c.stroke(); }},
+            { name: 'Bales', fill: (c,x,y,s) => { c.beginPath(); c.ellipse(x,y,s*0.07,s*0.16,0,0,Math.PI*2); c.stroke(); }},
+            { name: 'Purk', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*0.2,0,Math.PI*2); c.stroke(); for(let i=0;i<5;i++){ c.beginPath(); c.arc(x+s*0.24*Math.cos(i*Math.PI*2/5),y+s*0.24*Math.sin(i*Math.PI*2/5),s*0.07,0,Math.PI*2); c.stroke(); }}},
+            { name: 'Fengle', fill: (c,x,y,s) => { for(let i=-2;i<=2;i++){ c.beginPath(); c.moveTo(x,y); c.lineTo(x+s*0.4*Math.cos(-Math.PI/2+i*0.3),y+s*0.4*Math.sin(-Math.PI/2+i*0.3)); c.stroke(); }}},
+            { name: 'Striping', fill: (c,x,y,s) => { for(let i=-2;i<=2;i++) c.fillRect(x-s*0.4,y+i*s*0.25,s*0.8,1); }},
+            { name: 'Cadent', fill: (c,x,y,s) => { for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(x+i*s*0.4,y,s*0.2,0,Math.PI); c.stroke(); }}},
+            { name: 'Nzeppel', fill: (c,x,y,s) => { c.beginPath(); c.ellipse(x,y,s*0.25,s*0.35,0,0,Math.PI*2); c.stroke(); }},
+            { name: 'Betweed', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.35); c.lineTo(x+s*0.35,y); c.lineTo(x,y+s*0.35); c.lineTo(x-s*0.35,y); c.closePath(); c.stroke(); c.beginPath(); c.moveTo(x-s*0.2,y-s*0.2); c.lineTo(x+s*0.2,y+s*0.2); c.moveTo(x+s*0.2,y-s*0.2); c.lineTo(x-s*0.2,y+s*0.2); c.stroke(); }},
+            { name: 'Verdigogh', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x-s*0.35,y+s*0.2); c.quadraticCurveTo(x,y-s*0.3,x+s*0.35,y); c.stroke(); c.beginPath(); c.arc(x+s*0.25,y-s*0.15,s*0.12,0,Math.PI*1.5); c.stroke(); }},
+            { name: 'Pokeleaf', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y+s*0.3); c.quadraticCurveTo(x-s*0.25,y,x,y-s*0.3); c.quadraticCurveTo(x+s*0.25,y,x,y+s*0.3); c.stroke(); }},
+            { name: 'Pokeroot', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*0.15,0,Math.PI*2); c.stroke(); c.fillRect(x-1,y+s*0.15,2,s*0.2); }},
+            { name: 'Cubine', fill: (c,x,y,s) => { c.strokeRect(x-s*0.35,y-s*0.35,s*0.7,s*0.7); for(let i=-1;i<=1;i++) c.fillRect(x-s*0.35,y+i*s*0.23-1,s*0.7,2); }},
+            { name: 'Beadlines', fill: (c,x,y,s) => { for(let i=-2;i<=2;i++){ c.beginPath(); c.arc(x+i*s*0.2,y,s*0.08,0,Math.PI*2); c.stroke(); }}},
+            { name: 'Echoism', fill: (c,x,y,s) => { for(let i=0;i<3;i++){ c.beginPath(); c.arc(x,y,s*0.3*(1-i*0.25),0,Math.PI*2); c.stroke(); }}},
+            { name: 'Ennies', fill: (c,x,y,s) => { for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(x+i*s*0.25,y,s*0.12,0,Math.PI*2); c.stroke(); }}},
+            { name: 'Fescu', fill: (c,x,y,s) => { for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(x,y); c.lineTo(x+i*s*0.2,y-s*0.35); c.stroke(); }}},
+            { name: 'Huggins', fill: (c,x,y,s) => { c.beginPath(); c.arc(x-s*0.2,y,s*0.15,0,Math.PI*2); c.stroke(); c.beginPath(); c.arc(x+s*0.2,y,s*0.15,0,Math.PI*2); c.stroke(); }},
+            { name: 'Icanthis', fill: (c,x,y,s) => { for(let i=0;i<5;i++){ const a=Math.PI*2*i/5; c.beginPath(); c.ellipse(x+s*0.25*Math.cos(a),y+s*0.25*Math.sin(a),s*0.1,s*0.05,a,0,Math.PI*2); c.stroke(); }}},
+            { name: 'Jetties', fill: (c,x,y,s) => { c.fillRect(x-s*0.4,y-2,s*0.8,4); c.fillRect(x-2,y-s*0.4,4,s*0.8); }},
+            { name: 'Juke', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x-s*0.3,y-s*0.3); c.lineTo(x+s*0.3,y-s*0.3); c.lineTo(x+s*0.3,y+s*0.3); c.lineTo(x-s*0.3,y+s*0.3); c.lineTo(x-s*0.3,y); c.lineTo(x,y); c.lineTo(x,y+s*0.3); c.stroke(); }},
+            { name: 'Jonqal', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.35); c.quadraticCurveTo(x+s*0.35,y,x,y+s*0.35); c.stroke(); c.beginPath(); c.moveTo(x,y-s*0.18); c.quadraticCurveTo(x+s*0.18,y,x,y+s*0.18); c.stroke(); }},
+            { name: 'Kandysnake', fill: (c,x,y,s) => { for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(x+i*s*0.3,y,s*0.15,0,Math.PI); c.stroke(); }}},
+            { name: 'Knase', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*0.3,Math.PI*0.5,Math.PI*1.5); c.stroke(); c.beginPath(); c.arc(x,y,s*0.15,Math.PI*1.5,Math.PI*0.5); c.stroke(); }},
+            { name: 'Kule', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.3); c.lineTo(x+s*0.3,y); c.lineTo(x,y+s*0.3); c.lineTo(x-s*0.3,y); c.closePath(); c.stroke(); }},
+            { name: 'Kruffle', fill: (c,x,y,s) => { c.beginPath(); for(let a=0;a<Math.PI*3;a+=0.15){const r=s*0.35*a/(Math.PI*3); c.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));} c.stroke(); }},
+            { name: 'Meer', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*0.3,0,Math.PI*2); c.stroke(); c.beginPath(); c.arc(x,y,s*0.15,0,Math.PI*2); c.stroke(); }},
+            { name: 'Meringue', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y-s*0.15,s*0.15,0,Math.PI*2); c.stroke(); c.beginPath(); c.arc(x,y+s*0.15,s*0.15,0,Math.PI*2); c.stroke(); }},
+            { name: 'Msst', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x-s*0.3,y); c.lineTo(x,y-s*0.3); c.lineTo(x+s*0.3,y); c.lineTo(x,y+s*0.3); c.closePath(); c.stroke(); }},
+            { name: 'Nekton', fill: (c,x,y,s) => { for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(x+i*s*0.3,y,s*0.12,0,Math.PI*2); c.stroke(); }}},
+            { name: 'Onamato', fill: (c,x,y,s) => { c.beginPath(); c.arc(x,y,s*0.3,0,Math.PI*2); c.stroke(); c.fillRect(x-2,y-2,4,4); }},
+            { name: 'Orlique', fill: (c,x,y,s) => { c.beginPath(); c.ellipse(x,y,s*0.35,s*0.2,0,0,Math.PI*2); c.stroke(); }},
+            { name: 'Palrevo', fill: (c,x,y,s) => { c.beginPath(); c.moveTo(x,y-s*0.3); c.lineTo(x+s*0.3,y); c.lineTo(x,y+s*0.3); c.lineTo(x-s*0.3,y); c.closePath(); c.stroke(); }},
+            { name: 'Ravel', fill: (c,x,y,s) => { c.beginPath(); for(let a=0;a<Math.PI*3;a+=0.1){const r=s*0.35*a/(Math.PI*3); c.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));} c.stroke(); }}
+        ];
+        
+        this.bindEvents();
+        this.generatePatternGrid();
+    }
+    
+    isInMask(x,y,m,w){const i=Math.floor(y)*w+Math.floor(x);return i>=0&&i<m.length&&m[i]>0;}
+    
+    fillRegion(ctx,region,pi,w,h){
+        if(pi<0||pi>=this.patterns.length)return;
+        const p=this.patterns[pi];
+        const d=this.settings.density;
+        ctx.strokeStyle='#000';
+        ctx.fillStyle='#000';
+        ctx.lineWidth=this.settings.strokeWidth;
+        ctx.lineCap='round';
+        for(let py=0;py<h;py+=d*1.1){
+            for(let px=0;px<w;px+=d*1.1){
+                if(this.isInMask(px,py,region,w)) p.fill(ctx,px,py,d);
+            }
+        }
+    }
+    
+    generatePatternGrid(){
+        const g=document.getElementById('patternGrid');
+        g.innerHTML='';
+        this.patterns.forEach((p,i)=>{
+            const item=document.createElement('div');
+            item.className=`pattern-item ${this.selectedPatterns.has(i)?'selected':''}`;
+            item.title=p.name;
+            const cv=document.createElement('canvas');
+            cv.width=60;cv.height=60;
+            const c=cv.getContext('2d');
+            c.fillStyle='#fff';
+            c.fillRect(0,0,60,60);
+            c.strokeStyle='#333';
+            c.fillStyle='#333';
+            c.lineWidth=1;
+            p.fill(c,30,30,28);
+            const cm=document.createElement('div');
+            cm.className='check-mark';
+            cm.textContent='✓';
+            item.appendChild(cv);
+            item.appendChild(cm);
+            item.onclick=()=>this.toggle(i);
+            g.appendChild(item);
+        });
+        this.updateCount();
+    }
+    
+    toggle(i){
+        if(this.selectedPatterns.has(i))this.selectedPatterns.delete(i);
+        else this.selectedPatterns.add(i);
+        document.querySelectorAll('.pattern-item').forEach((el,idx)=>el.classList.toggle('selected',this.selectedPatterns.has(idx)));
+        this.updateCount();
+        if(this.originalImage&&this.selectedPatterns.size>0){this.assign();this.generate();}
+    }
+    updateCount(){document.getElementById('selectedCount').textContent=this.selectedPatterns.size;}
+    selectAll(){
+        this.patterns.forEach((_,i)=>this.selectedPatterns.add(i));
+        document.querySelectorAll('.pattern-item').forEach(el=>el.classList.add('selected'));
+        this.updateCount();
+        if(this.originalImage){this.assign();this.generate();}
+    }
+    clearAll(){
+        this.selectedPatterns.clear();
+        document.querySelectorAll('.pattern-item').forEach(el=>el.classList.remove('selected'));
+        this.updateCount();
+    }
+    assign(){
+        const l=Array.from(this.selectedPatterns);
+        if(!l.length)return;
+        this.regionPatternAssign=this.regions.map((_,i)=>l[i%l.length]);
+        this.updateRegionUI();
+    }
+    shuffle(){
+        if(this.regionPatternAssign.length<2)return;
+        for(let i=this.regionPatternAssign.length-1;i>0;i--){
+            const j=Math.floor(Math.random()*(i+1));
+            [this.regionPatternAssign[i],this.regionPatternAssign[j]]=[this.regionPatternAssign[j],this.regionPatternAssign[i]];
+        }
+        this.updateRegionUI();
+        this.generate();
+    }
+    updateRegionUI(){
+        const g=document.getElementById('regionAssignGrid');
+        g.innerHTML='';
+        const cl=['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
+        this.regions.forEach((r,i)=>{
+            const c=document.createElement('div');
+            c.className='region-card';
+            c.innerHTML=`<div style="width:16px;height:16px;border-radius:50%;background:${cl[i%cl.length]};margin:0 auto 6px;"></div><div class="text-xs mb-1" style="color:rgba(255,255,255,0.5);">區域${i+1}</div>`;
+            const s=document.createElement('select');
+            s.innerHTML=this.patterns.map((p,idx)=>`<option value="${idx}" ${this.regionPatternAssign[i]===idx?'selected':''}>${p.name}</option>`).join('');
+            s.onchange=e=>this.regionPatternAssign[i]=+e.target.value;
+            c.appendChild(s);
+            g.appendChild(c);
+        });
+    }
+    
+    bindEvents(){
+        const uz=document.getElementById('uploadZone');
+        const fi=document.getElementById('fileInput');
+        uz.onclick=()=>fi.click();
+        uz.ondragover=e=>{e.preventDefault();uz.classList.add('dragover');};
+        uz.ondragleave=()=>uz.classList.remove('dragover');
+        uz.ondrop=e=>{e.preventDefault();uz.classList.remove('dragover');if(e.dataTransfer.files[0])this.load(e.dataTransfer.files[0]);};
+        fi.onchange=e=>{if(e.target.files[0])this.load(e.target.files[0]);};
+        
+        document.getElementById('densitySlider').oninput=e=>{this.settings.density=+e.target.value;document.getElementById('densityValue').textContent=e.target.value;};
+        document.getElementById('strokeSlider').oninput=e=>{this.settings.strokeWidth=+e.target.value/10;document.getElementById('strokeValue').textContent=(+e.target.value/10).toFixed(1)+'px';};
+        document.getElementById('thresholdSlider').oninput=e=>{this.settings.threshold=+e.target.value;document.getElementById('thresholdValue').textContent=e.target.value;};
+        document.getElementById('regionSlider').oninput=e=>{this.settings.regionCount=+e.target.value;document.getElementById('regionValue').textContent=e.target.value;};
+        document.getElementById('addShading').onchange=e=>{this.settings.addShading=e.target.checked;if(this.originalImage)this.generate();};
+        document.getElementById('showOutline').onchange=e=>{this.settings.showOutline=e.target.checked;if(this.originalImage)this.generate();};
+        document.getElementById('bgOption').onchange=e=>{this.settings.bgOption=e.target.value;if(this.originalImage)this.generate();};
+        
+        document.getElementById('generateBtn').onclick=()=>this.generate();
+        document.getElementById('downloadBtn').onclick=()=>this.dl();
+        document.getElementById('selectAllBtn').onclick=()=>this.selectAll();
+        document.getElementById('clearAllBtn').onclick=()=>this.clearAll();
+        document.getElementById('shuffleBtn').onclick=()=>this.shuffle();
+        document.getElementById('applyAssignBtn').onclick=()=>this.generate();
+        
+        document.querySelectorAll('.tab-btn').forEach(b=>{
+            b.onclick=e=>{
+                document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+                e.target.classList.add('active');
+                const v=e.target.dataset.view;
+                document.getElementById('regionAssignView').style.display=v==='regions'?'block':'none';
+                document.getElementById('regionCanvas').style.display=v==='regions'?'block':'none';
+                document.getElementById('mainCanvas').style.display=v==='regions'?'none':'block';
+            };
+        });
+    }
+    
+    load(f){
+        const r=new FileReader();
+        r.onload=e=>{
+            const im=new Image();
+            im.onload=()=>{
+                this.originalImage=im;
+                let w=im.width,h=im.height;
+                if(w>800||h>800){if(w>h){h=h/w*800;w=800;}else{w=w/h*800;h=800;}}
+                [this.mainCanvas,this.regionCanvas,this.originalCanvas].forEach(c=>{c.width=w;c.height=h;});
+                this.originalCtx.drawImage(im,0,0,w,h);
+                document.getElementById('originalCanvas').style.display='block';
+                document.getElementById('originalPlaceholder').style.display='none';
+                document.getElementById('generateBtn').disabled=false;
+                if(this.selectedPatterns.size===0)this.selectAll();
+                else this.generate();
+            };
+            im.src=e.target.result;
+        };
+        r.readAsDataURL(f);
+    }
+    
+    async generate(){
+        if(!this.originalImage||!this.selectedPatterns.size)return;
+        document.getElementById('processingOverlay').style.display='flex';
+        document.getElementById('placeholderText').style.display='none';
+        document.getElementById('mainCanvas').style.display='block';
+        await new Promise(r=>setTimeout(r,30));
+        const w=this.mainCanvas.width,h=this.mainCanvas.height;
+        document.getElementById('processingText').textContent='提取遮罩...';
+        await new Promise(r=>setTimeout(r,10));
+        this.mask=this.maskExtract(w,h);
+        document.getElementById('processingText').textContent='分割...';
+        await new Promise(r=>setTimeout(r,10));
+        this.regions=this.seg(w,h);
+        if(this.regionPatternAssign.length!==this.regions.length)this.assign();
+        this.drawReg(w,h);
+        document.getElementById('processingText').textContent='生成...';
+        await new Promise(r=>setTimeout(r,10));
+        this.render(w,h);
+        document.getElementById('processingOverlay').style.display='none';
+    }
+    
+    maskExtract(w,h){
+        const t=document.createElement('canvas');
+        t.width=w;t.height=h;
+        const c=t.getContext('2d');
+        c.drawImage(this.originalImage,0,0,w,h);
+        const d=c.getImageData(0,0,w,h).data;
+        const m=new Uint8Array(w*h);
+        for(let i=0;i<w*h;i++){
+            const idx=i*4;
+            const r=d[idx],g=d[idx+1],b=d[idx+2];
+            const light=r>220&&g>220&&b>220;
+            const nearW=Math.abs(r-g)<30&&Math.abs(g-b)<30&&r>200;
+            m[i]=(!light&&!nearW)?255:0;
+        }
+        const tp=new Uint8Array(w*h);
+        for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){let mx=0;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)mx=Math.max(mx,m[(y+dy)*w+x+dx]);tp[y*w+x]=mx;}
+        for(let y=3;y<h-3;y++)for(let x=3;x<w-3;x++){let mn=255;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)mn=Math.min(mn,tp[(y+dy)*w+x+dx]);m[y*w+x]=mn;}
+        const vs=new Uint8Array(w*h);
+        const q=[];
+        for(let x=0;x<w;x++){if(!m[x])q.push([x,0]);if(!m[(h-1)*w+x])q.push([x,h-1]);}
+        for(let y=0;y<h;y++){if(!m[y*w])q.push([0,y]);if(!m[y*w+w-1])q.push([w-1,y]);}
+        while(q.length){
+            const[x,y]=q.shift();
+            const idx=y*w+x;
+            if(x<0||x>=w||y<0||y>=h||vs[idx]||m[idx])continue;
+            vs[idx]=1;
+            m[idx]=0;
+            q.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+        }
+        return m;
+    }
+    
+    seg(w,h){
+        const rg=[];
+        const n=this.settings.regionCount;
+        let cx=0,cy=0,cnt=0;
+        for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(this.mask[y*w+x]){cx+=x;cy+=y;cnt++;}
+        if(!cnt)return rg;
+        cx/=cnt;cy/=cnt;
+        const sd=[];
+        for(let i=0;i<n;i++){
+            const a=Math.PI*2/n*i+Math.random()*0.5;
+            sd.push({x:cx+Math.random()*Math.min(w,h)*0.3*Math.cos(a),y:cy+Math.random()*Math.min(w,h)*0.3*Math.sin(a)});
+        }
+        for(let i=0;i<n;i++){
+            const r=new Uint8Array(w*h);
+            for(let y=0;y<h;y++){
+                for(let x=0;x<w;x++){
+                    if(this.mask[y*w+x]){
+                        let mn=Infinity,ns=0;
+                        sd.forEach((s,j)=>{const d=Math.hypot(x-s.x,y-s.y);if(d<mn){mn=d;ns=j;}});
+                        if(ns===i)r[y*w+x]=255;
+                    }
+                }
+            }
+            rg.push({mask:r});
+        }
+        return rg;
+    }
+    
+    drawReg(w,h){
+        this.regionCtx.clearRect(0,0,w,h);
+        const cl=['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#dfe6e9','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7'];
+        this.regions.forEach((r,i)=>{
+            this.regionCtx.fillStyle=cl[i%cl.length];
+            for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(r.mask[y*w+x])this.regionCtx.fillRect(x,y,1,1);
+        });
+    }
+    
+    render(w,h){
+        // Step 1: Create temp canvas
+        const t=document.createElement('canvas');
+        t.width=w;t.height=h;
+        const tc=t.getContext('2d');
+        
+        // Step 2: White background
+        tc.fillStyle='#fff';
+        tc.fillRect(0,0,w,h);
+        
+        // Step 3: Fill patterns
+        this.regions.forEach((r,i)=>{
+            const pi=this.regionPatternAssign[i]||0;
+            this.fillRegion(tc,r.mask,pi,w,h);
+        });
+        
+        // Step 4: Shading
+        if(this.settings.addShading){
+            const id=tc.getImageData(0,0,w,h);
+            const dd=id.data;
+            for(let y=1;y<h-1;y++){
+                for(let x=1;x<w-1;x++){
+                    const idx=y*w+x;
+                    if(this.mask[idx]){
+                        let ed=false,cr=-1;
+                        for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[idx]){cr=r;break;}
+                        if(cr>=0){
+                            outer:for(let dy=-1;dy<=1;dy++){
+                                for(let dx=-1;dx<=1;dx++){
+                                    let nr=-1;
+                                    for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[(y+dy)*w+x+dx]){nr=r;break;}
+                                    if(nr!==cr){ed=true;break outer;}
+                                }
+                            }
+                        }
+                        if(ed){
+                            const p=idx*4;
+                            dd[p]=Math.max(0,dd[p]-50);
+                            dd[p+1]=Math.max(0,dd[p+1]-50);
+                            dd[p+2]=Math.max(0,dd[p+2]-50);
+                        }
+                    }
+                }
+            }
+            tc.putImageData(id,0,0);
+        }
+        
+        // Step 5: Outline
+        if(this.settings.showOutline){
+            const ol=document.createElement('canvas');
+            ol.width=w;ol.height=h;
+            const oc=ol.getContext('2d');
+            oc.drawImage(this.originalImage,0,0,w,h);
+            const od=oc.getImageData(0,0,w,h).data;
+            const ed=oc.getImageData(0,0,w,h);
+            const edd=ed.data;
+            for(let i=0;i<w*h;i++){
+                const idx=i*4;
+                const g=0.299*od[idx]+0.587*od[idx+1]+0.114*od[idx+2];
+                if(this.mask[i]){
+                    if(g<this.settings.threshold){
+                        edd[idx]=edd[idx+1]=edd[idx+2]=0;
+                        edd[idx+3]=255;
+                    }else edd[idx+3]=0;
+                }else edd[idx+3]=0;
+            }
+            oc.putImageData(ed,0,0);
+            tc.drawImage(ol,0,0);
+        }
+        
+        // Step 6: Clear main canvas
+        this.mainCtx.clearRect(0,0,w,h);
+        
+        // Step 7: Background
+        if(this.settings.bgOption==='white'){
+            this.mainCtx.fillStyle='#fff';
+            this.mainCtx.fillRect(0,0,w,h);
+        }
+        
+        // Step 8: Copy only inside mask
+        const fid=tc.getImageData(0,0,w,h);
+        const fdd=fid.data;
+        const out=this.mainCtx.createImageData(w,h);
+        const od=out.data;
+        
+        for(let i=0;i<w*h;i++){
+            const idx=i*4;
+            if(this.mask[i]){
+                od[idx]=fdd[idx];
+                od[idx+1]=fdd[idx+1];
+                od[idx+2]=fdd[idx+2];
+                od[idx+3]=fdd[idx+3];
+            }else if(this.settings.bgOption==='white'){
+                od[idx]=od[idx+1]=od[idx+2]=255;
+                od[idx+3]=255;
+            }else{
+                od[idx+3]=0;
+            }
+        }
+        
+        this.mainCtx.putImageData(out,0,0);
+    }
+    
+    dl(){
+        const lk=document.createElement('a');
+        lk.download=`zentangle-${Date.now()}.png`;
+        lk.href=this.mainCanvas.toDataURL('image/png');
+        lk.click();
+    }
+}
+
+new ZentangleGenerator();
+    </script>
+</body>
+</html>
