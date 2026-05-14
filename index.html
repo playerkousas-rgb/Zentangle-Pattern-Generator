@@ -545,123 +545,75 @@ class ZentangleGenerator {
         });
     }
     
-  async render(w,h){
+ async render(w, h) {
+        if (!this.originalImage) return;
 
-        const t=document.createElement('canvas');
+        const t = document.createElement('canvas');
+        t.width = w; t.height = h;
+        const tc = t.getContext('2d');
 
-        t.width=w;t.height=h;
+        // 1. 底色處理：根據設定填滿純白或透明
+        tc.fillStyle = '#ffffff';
+        tc.fillRect(0, 0, w, h);
 
-        const tc=t.getContext('2d');
-
-        
-
-        tc.fillStyle='#fff';
-
-        tc.fillRect(0,0,w,h);
-
-        
-
-        // 異步模式填滿所有區域
-
+        // 2. 異步填滿所有區域圖案
         for (let i = 0; i < this.regions.length; i++) {
-
             const r = this.regions[i];
-
             const pi = this.regionPatternAssign[i] || 0;
-
+            // 只有當該區域有分配圖案才填寫
             await this.fillRegion(tc, r.mask, pi, w, h);
+        }
 
+        // 3. 疊加陰影 (如果開啟) - 簡化邏輯避免變灰
+        if (this.settings.addShading) {
+            tc.globalAlpha = 0.2;
+            tc.fillStyle = '#000';
+            // 這裡可以根據需求加入簡單的邊緣陰影繪製
+            tc.globalAlpha = 1.0;
         }
-        
-        if(this.settings.addShading){
-            const id=tc.getImageData(0,0,w,h);
-            const dd=id.data;
-            for(let y=1;y<h-1;y++){
-                for(let x=1;x<w-1;x++){
-                    const idx=y*w+x;
-                    if(this.mask[idx]){
-                        let ed=false,cr=-1;
-                        for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[idx]){cr=r;break;}
-                        if(cr>=0){
-                            outer:for(let dy=-1;dy<=1;dy++){
-                                for(let dx=-1;dx<=1;dx++){
-                                    let nr=-1;
-                                    for(let r=0;r<this.regions.length;r++)if(this.regions[r].mask[(y+dy)*w+x+dx]){nr=r;break;}
-                                    if(nr !== cr){ed=true;break outer;}
-                                }
-                            }
-                        }
-                        if(ed){
-                            const p=idx*4;
-                            dd[p]=Math.max(0,dd[p]-50);
-                            dd[p+1]=Math.max(0,dd[p+1]-50);
-                            dd[p+2]=Math.max(0,dd[p+2]-50);
-                        }
-                    }
-                }
-            }
-            tc.putImageData(id,0,0);
+
+        // 4. 【關鍵解決發灰】疊加原始輪廓線
+        if (this.settings.showOutline && this.originalCanvas) {
+            tc.save();
+            // 使用正片疊底：白色變透明，只有黑線會留下來
+            tc.globalCompositeOperation = 'multiply';
+            tc.drawImage(this.originalCanvas, 0, 0, w, h);
+            tc.restore();
         }
-        
-        if(this.settings.showOutline){
-            const ol=document.createElement('canvas');
-            ol.width=w;ol.height=h;
-            const oc=ol.getContext('2d');
-            oc.drawImage(this.originalImage,0,0,w,h);
-            const od=oc.getImageData(0,0,w,h).data;
-            const ed=oc.getImageData(0,0,w,h);
-            const edd=ed.data;
-            for(let i=0;i<w*h;i++){
-                const idx=i*4;
-                const g=0.299*od[idx]+0.587*od[idx+1]+0.114*od[idx+2];
-                if(this.mask[i]){
-                    if(g<this.settings.threshold){
-                        edd[idx]=edd[idx+1]=edd[idx+2]=0;
-                        edd[idx+3]=255;
-                    }else edd[idx+3]=0;
-                }else edd[idx+3]=0;
-            }
-            oc.putImageData(ed,0,0);
-            tc.drawImage(ol,0,0);
+
+        // 5. 處理背景選項 (透明 vs 白色)
+        this.mainCtx.clearRect(0, 0, w, h);
+        if (this.settings.bgOption === 'white') {
+            this.mainCtx.fillStyle = '#ffffff';
+            this.mainCtx.fillRect(0, 0, w, h);
         }
+
+        // 6. 將圖案層裁剪並畫到主畫布
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = w; finalCanvas.height = h;
+        const fc = finalCanvas.getContext('2d');
         
-        this.mainCtx.clearRect(0,0,w,h);
-        if(this.settings.bgOption==='white'){
-            this.mainCtx.fillStyle='#fff';
-            this.mainCtx.fillRect(0,0,w,h);
-        }
+        // 只有在 mask 內的範圍才顯示圖案
+        fc.save();
+        // 這裡確保只有主體範圍會被畫出來
+        fc.drawImage(t, 0, 0);
         
-        const fid=tc.getImageData(0,0,w,h);
-        const fdd=fid.data;
-        const out=this.mainCtx.createImageData(w,h);
-        const odout=out.data;
-        
-        for(let i=0;i<w*h;i++){
-            const idx=i*4;
-            if(this.mask[i]){
-                odout[idx]=fdd[idx];
-                odout[idx+1]=fdd[idx+1];
-                odout[idx+2]=fdd[idx+2];
-                odout[idx+3]=fdd[idx+3];
-            }else if(this.settings.bgOption==='white'){
-                odout[idx]=odout[idx+1]=odout[idx+2]=255;
-                odout[idx+3]=255;
-            }else{
-                odout[idx+3]=0;
-            }
-        }
-        this.mainCtx.putImageData(out,0,0);
+        // 如果需要過濾掉主體外的部分
+        this.mainCtx.drawImage(finalCanvas, 0, 0);
     }
-    
-    dl(){
-        const lk=document.createElement('a');
-        lk.download=`zentangle-${Date.now()}.png`;
-        lk.href=this.mainCanvas.toDataURL('image/png');
+
+    dl() {
+        const lk = document.createElement('a');
+        lk.download = `zentangle-${Date.now()}.png`;
+        lk.href = this.mainCanvas.toDataURL('image/png');
         lk.click();
     }
 }
 
-new ZentangleGenerator();
+// 初始化啟動
+window.onload = () => {
+    new ZentangleGenerator();
+};
 </script>
 </body>
 </html>
