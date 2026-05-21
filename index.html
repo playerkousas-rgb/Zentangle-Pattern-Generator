@@ -75,7 +75,7 @@
               <h3>📸 上傳指引</h3>
               <ul>
                 <li>透明 PNG / 白底插畫效果最好</li>
-                <li>會自動保留輪廓、眼睛、表情等細節線</li>
+                <li>會自動保留眼睛、表情等內部特徵線</li>
                 <li>圖案會轉成黑色線條，不再出現灰底</li>
                 <li>如背景複雜，可提高「背景容差」後重新生成</li>
               </ul>
@@ -117,7 +117,15 @@
               </div>
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="showOutline" checked class="w-4 h-4">
-                <label for="showOutline" class="text-xs" style="color: rgba(255,255,255,0.6);">保留原圖輪廓與細節</label>
+                <label for="showOutline" class="text-xs" style="color: rgba(255,255,255,0.6);">保留內部特徵線，不畫黑色外輪廓</label>
+              </div>
+              <div>
+                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">特徵線強度</label>
+                <select id="featureStrength" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                  <option value="low">低 - 只保留最明顯特徵</option>
+                  <option value="medium" selected>中 - 平衡</option>
+                  <option value="high">高 - 保留更多內部線條</option>
+                </select>
               </div>
               <div>
                 <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">背景</label>
@@ -195,7 +203,7 @@ class ZentangleGenerator {
 
     this.originalImage = null;
     this.sourceData = null;
-    this.visibleMask = null; // 包含透明 PNG 的白邊 / 可見主體
+    this.visibleMask = null; // 可見主體；會自動移除透明 PNG 外圍白邊
     this.fillMask = null;    // 真正填禪繞圖案的區域，會排除白底與透明背景
     this.lineMask = null;
     this.regions = [];
@@ -211,6 +219,7 @@ class ZentangleGenerator {
       regionCount: 8,
       addShading: true,
       showOutline: true,
+      featureStrength: 'medium',
       bgOption: 'white'
     };
 
@@ -248,18 +257,19 @@ class ZentangleGenerator {
     fi.onchange = e => { if (e.target.files[0]) this.load(e.target.files[0]); };
 
     this.el('densitySlider').oninput = e => { this.settings.density = +e.target.value; this.el('densityValue').textContent = e.target.value; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(); };
-    this.el('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value / 10; this.el('strokeValue').textContent = this.settings.strokeWidth.toFixed(1) + 'px'; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(); };
+    this.el('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value / 10; this.el('strokeValue').textContent = this.settings.strokeWidth.toFixed(1) + 'px'; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(true); };
     this.el('thresholdSlider').oninput = e => { this.settings.threshold = +e.target.value; this.el('thresholdValue').textContent = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('regionSlider').oninput = e => { this.settings.regionCount = +e.target.value; this.el('regionValue').textContent = e.target.value; this.regionPatternAssign = []; if (this.originalImage) this.generateDebounced(true); };
     this.el('addShading').onchange = e => { this.settings.addShading = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('showOutline').onchange = e => { this.settings.showOutline = e.target.checked; if (this.originalImage) this.generate(); };
+    this.el('featureStrength').onchange = e => { this.settings.featureStrength = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('bgOption').onchange = e => { this.settings.bgOption = e.target.value; if (this.originalImage) this.generate(); };
 
     this.el('generateBtn').onclick = () => this.generate(true);
     this.el('downloadBtn').onclick = () => this.download();
     this.el('selectAllBtn').onclick = () => this.selectAll(true);
     this.el('clearAllBtn').onclick = () => this.clearAll();
-    this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; if (this.originalImage) this.generate(true); };
+    this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
     this.el('applyAssignBtn').onclick = () => this.generate();
 
     document.addEventListener('click', () => document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')));
@@ -347,7 +357,7 @@ class ZentangleGenerator {
     reader.readAsDataURL(file);
   }
 
-  async generate(reanalyse = false) {
+  async generate(reanalyse = false, randomizeAssign = false) {
     if (!this.originalImage || this.selectedPatterns.size === 0) return;
     const w = this.mainCanvas.width, h = this.mainCanvas.height;
     this.el('processingOverlay').style.display = 'flex';
@@ -359,13 +369,13 @@ class ZentangleGenerator {
       this.el('processingText').textContent = '智能提取主體與透明背景...';
       await this.sleep(10);
       this.extractMasks(w, h);
-      this.el('processingText').textContent = '保留輪廓與細節線...';
+      this.el('processingText').textContent = '提取內部特徵線...';
       await this.sleep(10);
       this.lineMask = this.extractLineMask(w, h);
       this.el('processingText').textContent = '建立高質分區...';
       await this.sleep(10);
       this.regions = this.segment(w, h);
-      this.assignPatterns();
+      this.assignPatterns(randomizeAssign);
       this.drawRegionPreview(w, h);
     }
 
@@ -383,13 +393,32 @@ class ZentangleGenerator {
     const hasTransparency = transparentCount > w * h * 0.01;
 
     if (hasTransparency) {
+      // 透明 PNG 常見有「貼紙白邊」。舊版會把白邊保留下來；
+      // 這裡改成只移除「連到透明外部」的近白像素，內部高光仍可保留。
+      const borderWhite = this.findConnectedWhiteBorder(w, h, data);
+      let alphaCount = 0, visibleCount = 0;
       for (let i = 0; i < w * h; i++) {
         const p = i * 4;
         const a = data[p + 3], r = data[p], g = data[p + 1], b = data[p + 2];
         if (a > 18) {
-          visible[i] = 255;
-          // 保留透明 PNG 的白色貼紙邊框，不把它填圖案
-          if (!this.isNearWhite(r, g, b, a)) fill[i] = 255;
+          alphaCount++;
+          if (!borderWhite[i]) {
+            visible[i] = 255;
+            visibleCount++;
+            // 填圖案時仍避開內部純白高光，讓眼睛反光等特徵較乾淨。
+            if (!this.isNearWhite(r, g, b, a)) fill[i] = 255;
+          }
+        }
+      }
+      // 如果圖片本身就是白色主體，避免誤刪太多。
+      if (visibleCount < alphaCount * 0.2) {
+        visible.fill(0); fill.fill(0);
+        for (let i = 0; i < w * h; i++) {
+          const p = i * 4;
+          if (data[p + 3] > 18) {
+            visible[i] = 255;
+            if (!this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3])) fill[i] = 255;
+          }
         }
       }
     } else {
@@ -405,10 +434,47 @@ class ZentangleGenerator {
     }
 
     this.visibleMask = this.closeMask(this.keepLargestComponents(visible, w, h, 2), w, h, 1);
+    // 確保填圖案區域一定在可見主體內，避免外圍白邊或背景被填滿。
+    for (let i = 0; i < fill.length; i++) if (!this.visibleMask[i]) fill[i] = 0;
     const cleanedFill = this.openMask(this.closeMask(fill, w, h, 2), w, h, 1);
-    // 若圖像本身很白，避免 fillMask 被清空：退回 visibleMask
     let count = 0; for (let i = 0; i < cleanedFill.length; i++) if (cleanedFill[i]) count++;
     this.fillMask = count > 100 ? cleanedFill : this.visibleMask.slice();
+  }
+
+  findConnectedWhiteBorder(w, h, data) {
+    const border = new Uint8Array(w * h);
+    const q = [];
+    const isAlpha = (id) => data[id * 4 + 3] > 18;
+    const isBorderWhitePixel = (id) => {
+      const p = id * 4;
+      return isAlpha(id) && this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3]);
+    };
+    const push = (id) => { if (id >= 0 && id < w*h && !border[id] && isBorderWhitePixel(id)) { border[id] = 1; q.push(id); } };
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const id = y*w+x;
+        if (!isBorderWhitePixel(id)) continue;
+        let touchesOutside = x === 0 || y === 0 || x === w-1 || y === h-1;
+        if (!touchesOutside) {
+          const ns = [id-1, id+1, id-w, id+w];
+          touchesOutside = ns.some(ni => ni < 0 || ni >= w*h || !isAlpha(ni));
+        }
+        if (touchesOutside) push(id);
+      }
+    }
+
+    for (let head = 0; head < q.length; head++) {
+      const id = q[head];
+      const x = id % w;
+      const ns = [];
+      if (x > 0) ns.push(id-1);
+      if (x < w-1) ns.push(id+1);
+      if (id >= w) ns.push(id-w);
+      if (id < w*(h-1)) ns.push(id+w);
+      ns.forEach(push);
+    }
+    return border;
   }
 
   estimateBackgroundColor(w, h, data) {
@@ -499,27 +565,76 @@ class ZentangleGenerator {
     return out;
   }
 
+  featureConfig() {
+    const mode = this.settings.featureStrength || 'medium';
+    const configs = {
+      low:    { innerRadius: 5, darkMin: 34, darkMul: 0.55, gradMin: 54, gradMul: 1.25, colorMin: 58, colorMul: 0.78, alpha: 135, dilate: false },
+      medium: { innerRadius: 3, darkMin: 38, darkMul: 0.68, gradMin: 38, gradMul: 0.95, colorMin: 34, colorMul: 0.55, alpha: 180, dilate: false },
+      high:   { innerRadius: 2, darkMin: 43, darkMul: 0.84, gradMin: 28, gradMul: 0.70, colorMin: 24, colorMul: 0.36, alpha: 220, dilate: true }
+    };
+    return configs[mode] || configs.medium;
+  }
+
   extractLineMask(w, h) {
     const d = this.sourceData.data;
     const line = new Uint8Array(w * h);
+    const dark = new Uint8Array(w * h);
     const sensitivity = this.settings.threshold;
+    const cfg = this.featureConfig();
+
+    // 不要黑色外輪廓：先把可見主體往內縮，只在內縮後的區域找特徵線。
+    // 這樣外型邊界、透明 PNG 邊界、以及外框白邊位置都不會被畫成黑線。
+    const innerMask = this.erode(this.visibleMask, w, h, cfg.innerRadius);
+
+    // 深色區域只取「內部邊界」，不整片塗黑，避免眼睛/耳尖蓋住禪繞圖案。
+    for (let i = 0; i < w*h; i++) {
+      if (!innerMask[i]) continue;
+      const p = i * 4;
+      const lum = this.luma(d[p], d[p+1], d[p+2]);
+      if (lum < Math.max(cfg.darkMin, sensitivity * cfg.darkMul)) dark[i] = 255;
+    }
+    const darkBoundary = this.boundaryMask(dark, w, h, 1);
+
     for (let y = 1; y < h - 1; y++) {
       for (let x = 1; x < w - 1; x++) {
         const id = y*w+x;
-        if (!this.visibleMask[id]) continue;
-        const p = id * 4;
-        const lum = this.luma(d[p], d[p+1], d[p+2]);
-        const getLum = (xx,yy) => { const pp=(yy*w+xx)*4; return this.luma(d[pp], d[pp+1], d[pp+2]); };
-        const gx = -getLum(x-1,y-1) - 2*getLum(x-1,y) - getLum(x-1,y+1) + getLum(x+1,y-1) + 2*getLum(x+1,y) + getLum(x+1,y+1);
-        const gy = -getLum(x-1,y-1) - 2*getLum(x,y-1) - getLum(x+1,y-1) + getLum(x-1,y+1) + 2*getLum(x,y+1) + getLum(x+1,y+1);
+        if (!innerMask[id]) continue;
+        const pp = id * 4;
+        const centerLum = this.luma(d[pp], d[pp+1], d[pp+2]);
+        const centerColor = [d[pp], d[pp+1], d[pp+2]];
+        const safeLum = (xx,yy) => {
+          const ni = yy*w+xx;
+          if (!innerMask[ni]) return centerLum;
+          const p=(ni)*4;
+          return this.luma(d[p], d[p+1], d[p+2]);
+        };
+        const safeColor = (xx,yy) => {
+          const ni = yy*w+xx;
+          if (!innerMask[ni]) return centerColor;
+          const p=(ni)*4;
+          return [d[p], d[p+1], d[p+2]];
+        };
+
+        const gx = -safeLum(x-1,y-1) - 2*safeLum(x-1,y) - safeLum(x-1,y+1) + safeLum(x+1,y-1) + 2*safeLum(x+1,y) + safeLum(x+1,y+1);
+        const gy = -safeLum(x-1,y-1) - 2*safeLum(x,y-1) - safeLum(x+1,y-1) + safeLum(x-1,y+1) + 2*safeLum(x,y+1) + safeLum(x+1,y+1);
         const grad = Math.sqrt(gx*gx + gy*gy);
-        const darkInk = lum < Math.max(38, sensitivity * 0.92);
-        const hardEdge = grad > Math.max(42, sensitivity * 1.15);
-        if (darkInk || hardEdge) line[id] = 255;
+        const c = centerColor;
+        const cr = safeColor(x+1,y), cb = safeColor(x,y+1), cl = safeColor(x-1,y), ct = safeColor(x,y-1);
+        const colorEdge = Math.max(
+          this.colorDist(c[0],c[1],c[2],cr[0],cr[1],cr[2]),
+          this.colorDist(c[0],c[1],c[2],cb[0],cb[1],cb[2]),
+          this.colorDist(c[0],c[1],c[2],cl[0],cl[1],cl[2]),
+          this.colorDist(c[0],c[1],c[2],ct[0],ct[1],ct[2])
+        );
+        const hardEdge = grad > Math.max(cfg.gradMin, sensitivity * cfg.gradMul) || colorEdge > Math.max(cfg.colorMin, sensitivity * cfg.colorMul);
+        if (hardEdge || darkBoundary[id]) line[id] = 255;
       }
     }
-    const r = this.settings.strokeWidth >= 1.7 ? 1 : 0;
-    return r ? this.dilate(line, w, h, r) : line;
+
+    let out = (cfg.dilate || this.settings.strokeWidth >= 2.1) ? this.dilate(line, w, h, 1) : line;
+    // dilation 之後再次限制在 innerMask，確保完全不畫最外黑輪廓。
+    for (let i = 0; i < w*h; i++) if (!innerMask[i]) out[i] = 0;
+    return out;
   }
 
   maskToCanvas(mask, w, h, alpha = 255) {
@@ -585,10 +700,30 @@ class ZentangleGenerator {
     return regions.filter(r => r.mask.some(Boolean));
   }
 
-  assignPatterns() {
-    const selected = Array.from(this.selectedPatterns);
+  assignPatterns(randomize = false) {
+    let selected = Array.from(this.selectedPatterns);
     if (!selected.length || !this.regions.length) return;
-    this.regionPatternAssign = this.regions.map((_, i) => selected[i % selected.length]);
+    // 隨機排列時盡量避免抽到「空白」，除非使用者只選了空白。
+    const nonBlank = selected.filter(i => i !== 0);
+    const pool = nonBlank.length ? nonBlank : selected;
+
+    if (randomize) {
+      this.regionPatternAssign = this.regions.map((_, i) => {
+        const idx = Math.floor(this.seededRand(i * 97 + pool.length * 13 + 5) * pool.length) % pool.length;
+        return pool[idx];
+      });
+      // 避免相鄰區域太常連續同圖案。
+      if (pool.length > 1) {
+        for (let i = 1; i < this.regionPatternAssign.length; i++) {
+          if (this.regionPatternAssign[i] === this.regionPatternAssign[i-1]) {
+            const current = pool.indexOf(this.regionPatternAssign[i]);
+            this.regionPatternAssign[i] = pool[(current + 1 + Math.floor(this.seededRand(i * 41) * (pool.length - 1))) % pool.length];
+          }
+        }
+      }
+    } else {
+      this.regionPatternAssign = this.regions.map((_, i) => selected[i % selected.length]);
+    }
     this.updateRegionUI();
   }
 
@@ -651,33 +786,43 @@ class ZentangleGenerator {
     const pattern = this.patterns[patternIndex];
     if (!pattern || pattern.isBlank) return null;
     const size = Math.round(this.settings.density);
-    const key = `${patternIndex}-${size}-${this.settings.strokeWidth.toFixed(1)}`;
+    const key = `${patternIndex}-${size}-${this.settings.strokeWidth.toFixed(1)}-seamless2`;
     if (this.patternCache.has(key)) return this.patternCache.get(key);
 
     const img = await this.loadImage(pattern.url);
     const base = this.makeCanvas(size, size);
     const bctx = base.getContext('2d', { willReadFrequently: true });
-    bctx.fillStyle = '#fff';
-    bctx.fillRect(0,0,size,size);
-    bctx.drawImage(img, 0, 0, size, size);
+    bctx.clearRect(0,0,size,size);
 
-    // 把 SVG 內的白底移除，只留下純黑墨線，避免目前輸出變灰。
+    // SVG 圖案不少筆畫剛好碰到 tile 邊界，repeat 時就會出現一條條橫線/格線。
+    // 這裡裁掉外圍 9% 再放大，並把 tile 邊緣 alpha 淡出，避免接縫被看見。
+    const iw = img.naturalWidth || img.width || 200;
+    const ih = img.naturalHeight || img.height || 200;
+    const crop = 0.09;
+    bctx.drawImage(img, iw*crop, ih*crop, iw*(1-crop*2), ih*(1-crop*2), 0, 0, size, size);
+
     let image = bctx.getImageData(0,0,size,size);
     const d = image.data;
-    for (let i=0; i<size*size; i++) {
-      const p=i*4;
-      const avg=(d[p]+d[p+1]+d[p+2])/3;
-      const ink=this.clamp((248-avg)*2.3, 0, 255);
-      d[p]=d[p+1]=d[p+2]=0;
-      d[p+3]=ink > 10 ? ink : 0;
+    const fadeEdge = Math.max(2, Math.round(size * 0.055));
+    for (let y=0; y<size; y++) {
+      for (let x=0; x<size; x++) {
+        const i = y*size + x;
+        const p=i*4;
+        const avg=(d[p]+d[p+1]+d[p+2])/3;
+        const ink=this.clamp((246-avg)*2.05, 0, 235);
+        const distEdge = Math.min(x, y, size-1-x, size-1-y);
+        const edgeFade = this.clamp(distEdge / fadeEdge, 0, 1);
+        d[p]=d[p+1]=d[p+2]=0;
+        d[p+3]=ink > 12 ? Math.round(ink * edgeFade) : 0;
+      }
     }
     bctx.clearRect(0,0,size,size);
     bctx.putImageData(image,0,0);
 
     const thick = this.makeCanvas(size, size);
     const tctx = thick.getContext('2d');
-    const radius = Math.max(0, Math.round((this.settings.strokeWidth - 1) * 1.2));
-    tctx.globalAlpha = 0.95;
+    const radius = Math.max(0, Math.round((this.settings.strokeWidth - 1) * 0.9));
+    tctx.globalAlpha = 0.86;
     if (radius > 0) {
       for (let dy=-radius; dy<=radius; dy++) for (let dx=-radius; dx<=radius; dx++) {
         if (dx*dx + dy*dy <= radius*radius) tctx.drawImage(base, dx, dy);
@@ -689,15 +834,29 @@ class ZentangleGenerator {
     return thick;
   }
 
-  async fillRegionWithPattern(ctx, regionMask, patternIndex, w, h, tint = 0) {
+  async fillRegionWithPattern(ctx, regionMask, patternIndex, w, h, tint = 0, regionIndex = 0) {
     if (patternIndex === 0) return;
     const tile = await this.getPatternTile(patternIndex);
     if (!tile) return;
     const layer = this.makeCanvas(w, h);
     const lctx = layer.getContext('2d');
     const pattern = lctx.createPattern(tile, 'repeat');
+    if (!pattern) return;
+
+    // 每個區域用不同 offset / rotation / scale，避免所有圖案都從同一個水平線開始排列。
+    const offsetX = this.seededRand(patternIndex * 37 + regionIndex * 101 + 1) * tile.width;
+    const offsetY = this.seededRand(patternIndex * 53 + regionIndex * 89 + 2) * tile.height;
+    const angle = (this.seededRand(patternIndex * 71 + regionIndex * 43 + 3) - 0.5) * Math.PI * 0.55;
+    const scale = 0.92 + this.seededRand(patternIndex * 29 + regionIndex * 67 + 4) * 0.18;
+
+    lctx.save();
+    lctx.translate(w / 2 + offsetX, h / 2 + offsetY);
+    lctx.rotate(angle);
+    lctx.scale(scale, scale);
     lctx.fillStyle = pattern;
-    lctx.fillRect(0, 0, w, h);
+    lctx.fillRect(-w * 1.8, -h * 1.8, w * 3.6, h * 3.6);
+    lctx.restore();
+
     lctx.globalCompositeOperation = 'destination-in';
     lctx.drawImage(this.maskToCanvas(regionMask, w, h), 0, 0);
     lctx.globalCompositeOperation = 'source-over';
@@ -736,7 +895,7 @@ class ZentangleGenerator {
       ctx.clearRect(0, 0, w, h);
     }
 
-    // 先放白色底形：透明 PNG 的白色貼紙邊框會被保留下來。
+    // 先放白色底形：透明 PNG 的外圍白邊已在遮罩階段移除。
     // 注意：用獨立 layer 裁切，避免白底模式被 destination-in 變成透明。
     const whiteShape = this.maskToCanvas(this.visibleMask, w, h);
     const shapeLayer = this.makeCanvas(w, h);
@@ -751,7 +910,7 @@ class ZentangleGenerator {
     for (let i=0; i<this.regions.length; i++) {
       const pi = this.regionPatternAssign[i] ?? Array.from(this.selectedPatterns)[0] ?? 0;
       const tint = this.settings.addShading ? (i % 4) * 0.025 : 0;
-      await this.fillRegionWithPattern(ctx, this.regions[i].mask, pi, w, h, tint);
+      await this.fillRegionWithPattern(ctx, this.regions[i].mask, pi, w, h, tint, i);
     }
 
     // 柔和的灰階陰影：用原圖明暗做非常淡的 multiply，提升立體感但不污染成大片灰。
@@ -774,10 +933,9 @@ class ZentangleGenerator {
     if (this.settings.showOutline) {
       const lineCanvas = this.makeCanvas(w,h);
       const lctx = lineCanvas.getContext('2d');
-      this.drawMaskInk(lctx, this.lineMask, w, h, [0,0,0,230]);
-      // 外輪廓略粗，讓結果更像手繪線稿而不是只有紋理貼圖
-      const outer = this.boundaryMask(this.visibleMask, w, h, Math.max(1, Math.round(this.settings.strokeWidth)));
-      this.drawMaskInk(lctx, outer, w, h, [0,0,0,255]);
+      const alpha = this.featureConfig().alpha;
+      // 只畫內部特徵線；不再另外畫黑色外輪廓。
+      this.drawMaskInk(lctx, this.lineMask, w, h, [0,0,0,alpha]);
       ctx.drawImage(lineCanvas, 0, 0);
     }
 
