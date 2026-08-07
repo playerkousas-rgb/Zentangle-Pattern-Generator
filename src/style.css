@@ -167,3 +167,105 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ================= 列印版面 ================= */
+
+/* 螢幕上完全隱藏列印容器 */
+.print-root { display: none; }
+
+.print-preview-frame {
+  background: #6b7280;
+  border-radius: 12px;
+  padding: 16px;
+  max-height: 460px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.print-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 210 / 297;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  padding: 4.8% 4.8% 3%;
+  display: flex;
+  flex-direction: column;
+}
+.print-sheet .sheet-grid {
+  flex: 1;
+  display: grid;
+  gap: 4%;
+  min-height: 0;
+}
+.print-sheet.per-1 .sheet-grid { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.print-sheet.per-2 .sheet-grid { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+.print-sheet.per-4 .sheet-grid { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.print-sheet .sheet-slot {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 0; overflow: hidden;
+}
+.print-sheet .sheet-slot.cut-marks { outline: 1px dashed #cbd5e1; outline-offset: 2px; }
+.print-sheet .sheet-slot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.print-sheet .sheet-footer {
+  text-align: center; color: #9ca3af; font-size: 6px;
+  letter-spacing: .06em; padding-top: 4px; flex-shrink: 0;
+}
+.sheet-caption { color: rgba(255,255,255,.75); font-size: 11px; }
+
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+
+  html, body { background: #fff !important; }
+  /* 只留列印容器，其餘 UI 全部隱藏 */
+  body > *:not(.print-root) { display: none !important; }
+
+  .print-root { display: block !important; }
+
+  .print-page {
+    width: 190mm;            /* 210 - 2×10mm margin */
+    height: 277mm;           /* 297 - 2×10mm margin */
+    display: flex;
+    flex-direction: column;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+  }
+  .print-page:last-child { page-break-after: auto; break-after: auto; }
+
+  .print-grid {
+    flex: 1;
+    display: grid;
+    gap: 6mm;
+    min-height: 0;
+  }
+  .print-page.per-1 .print-grid { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .print-page.per-2 .print-grid { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .print-page.per-4 .print-grid { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+  .print-slot {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 0; overflow: hidden;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .print-slot.cut-marks { outline: 0.3mm dashed #d4d4d4; outline-offset: 1.5mm; }
+  .print-slot img {
+    max-width: 100%; max-height: 100%;
+    object-fit: contain;
+    /* 確保線稿以最高品質輸出 */
+    image-rendering: auto;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .print-footer {
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 7pt;
+    color: #999;
+    letter-spacing: .08em;
+    padding-top: 3mm;
+  }
+}

@@ -1,6 +1,7 @@
 import './style.css';
 import { PATTERNS } from './lib/patterns.js';
 import { ZentangleEngine, DEFAULT_SETTINGS, AbortedError } from './lib/generator.js';
+import { applyPrintStyle, buildPrintPages, printPages, FOOTER_TEXT } from './lib/print.js';
 
 const MAX_SIDE = 1200;
 const STORAGE_KEY = 'zentangle:v2';
@@ -31,6 +32,7 @@ class ZentangleApp {
     this.filter = '';
     this.autoGenerate = true;
     this.abortController = null;
+    this.print = { mode: 'lineart', perPage: 1, copies: 20, threshold: 190, cutMarks: true };
 
     this.mainCanvas = $('mainCanvas');
     this.regionCanvas = $('regionCanvas');
@@ -58,6 +60,7 @@ class ZentangleApp {
       Object.assign(this.engine.settings, { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) });
       if (Array.isArray(saved.selected)) this.selectedPatterns = new Set(saved.selected.filter((i) => i < PATTERNS.length));
       if (typeof saved.autoGenerate === 'boolean') this.autoGenerate = saved.autoGenerate;
+      if (saved.print) Object.assign(this.print, saved.print);
     } catch { /* 忽略毀損的設定 */ }
   }
 
@@ -67,6 +70,7 @@ class ZentangleApp {
         settings: this.engine.settings,
         selected: Array.from(this.selectedPatterns),
         autoGenerate: this.autoGenerate,
+        print: this.print,
       }));
     } catch { /* 隱私模式可能無法寫入 */ }
   }
@@ -82,6 +86,13 @@ class ZentangleApp {
     $('featureStrength').value = s.featureStrength;
     $('bgOption').value = s.bgOption;
     $('autoGenerate').checked = this.autoGenerate;
+    const p = this.print;
+    $('printMode').value = p.mode;
+    $('printPerPage').value = String(p.perPage);
+    $('printCopies').value = p.copies; $('printCopiesValue').textContent = p.copies;
+    $('printThreshold').value = p.threshold; $('printThresholdValue').textContent = p.threshold;
+    $('printCutMarks').checked = p.cutMarks;
+    this.updatePrintUI();
     this.updateCount();
   }
 
@@ -141,6 +152,22 @@ class ZentangleApp {
     $('shuffleBtn').addEventListener('click', () => this.shuffle());
     $('applyAssignBtn').addEventListener('click', () => this.rerender());
 
+    // ---- 列印設定 ----
+    const onPrint = (id, apply) => $(id).addEventListener('input', (e) => {
+      apply(e.target);
+      this.persist();
+      this.updatePrintUI();
+      this.schedulePrintPreview();
+    });
+    onPrint('printMode', (t) => { this.print.mode = t.value; });
+    onPrint('printPerPage', (t) => { this.print.perPage = Number(t.value); });
+    onPrint('printCopies', (t) => { this.print.copies = Number(t.value); $('printCopiesValue').textContent = t.value; });
+    onPrint('printThreshold', (t) => { this.print.threshold = Number(t.value); $('printThresholdValue').textContent = t.value; });
+    onPrint('printCutMarks', (t) => { this.print.cutMarks = t.checked; });
+
+    $('printPreviewBtn').addEventListener('click', () => this.renderPrintPreview());
+    $('printBtn').addEventListener('click', () => this.doPrint());
+
     document.addEventListener('click', () => this.closePickers());
 
     document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -173,6 +200,7 @@ class ZentangleApp {
       else if (key === 'd') { e.preventDefault(); this.download(); }
       else if (key === 'c') { e.preventDefault(); this.copyToClipboard(); }
       else if (key === 'r') { e.preventDefault(); this.shuffle(); }
+      else if (key === 'p') { e.preventDefault(); this.doPrint(); }
       else if (e.code === 'Space') { e.preventDefault(); this.setCompare(true); }
     });
     document.addEventListener('keyup', (e) => { if (e.code === 'Space') this.setCompare(false); });
@@ -350,6 +378,8 @@ class ZentangleApp {
       $('downloadBtn').disabled = false;
       $('copyBtn').disabled = false;
       $('compareBtn').disabled = false;
+      this.updatePrintUI();
+      this.schedulePrintPreview();
       const ms = Math.round(performance.now() - started);
       if (ms > 1200) toast(`生成完成（${(ms / 1000).toFixed(1)}s）`);
     } catch (err) {
@@ -372,6 +402,7 @@ class ZentangleApp {
     try {
       const result = await this.engine.render({ onProgress: (p, t) => { $('progressBar').style.width = `${p}%`; $('processingText').textContent = t; } });
       this.paintResult(result);
+      this.schedulePrintPreview();
     } finally {
       overlay.hidden = true;
       $('progressBar').style.width = '0%';
@@ -502,6 +533,100 @@ class ZentangleApp {
       frag.appendChild(card);
     });
     grid.appendChild(frag);
+  }
+
+  /* ---------------- 列印 ---------------- */
+
+  updatePrintUI() {
+    const { mode, perPage, copies } = this.print;
+    const hints = {
+      lineart: '團員自己上色，最省墨。',
+      trace: '淡灰底稿，讓團員照著描出線條。',
+      finished: '完整生成結果，直接當作品印出。',
+    };
+    $('printModeHint').textContent = hints[mode] ?? '';
+    // 只有線稿模式需要二值化門檻
+    $('thresholdRow').style.display = mode === 'lineart' ? '' : 'none';
+    const pages = Math.ceil(copies / perPage);
+    $('printSummary').textContent = `${copies} 份 · ${perPage} 張/頁 · 共 ${pages} 頁 A4`;
+    const ready = this.hasResult;
+    $('printBtn').disabled = !ready;
+    $('printPreviewBtn').disabled = !ready;
+  }
+
+  schedulePrintPreview() {
+    if (!this.hasResult || $('printPreview').hidden) return;
+    clearTimeout(this._printDebounce);
+    this._printDebounce = setTimeout(() => this.renderPrintPreview(), 250);
+  }
+
+  /** 產出套好列印樣式的圖片 dataURL（以匯出倍率決定解析度）。 */
+  printImageDataUrl() {
+    const base = this.exportCanvas();
+    const styled = applyPrintStyle(base, this.print.mode, this.print.threshold);
+    return styled.toDataURL('image/png');
+  }
+
+  renderPrintPreview() {
+    if (!this.hasResult) { toast('請先生成圖片', 'error'); return; }
+    const { perPage, copies, cutMarks } = this.print;
+    const dataUrl = this.printImageDataUrl();
+    const host = $('printPreview');
+    host.hidden = false;
+    host.innerHTML = '';
+
+    const totalPages = Math.ceil(copies / perPage);
+    const shown = Math.min(totalPages, 2); // 每頁內容相同，預覽前兩頁就夠
+    let remaining = copies;
+
+    for (let p = 0; p < shown; p++) {
+      const onThisPage = Math.min(perPage, remaining);
+      remaining -= onThisPage;
+
+      const sheet = document.createElement('div');
+      sheet.className = `print-sheet per-${perPage}`;
+      const grid = document.createElement('div');
+      grid.className = 'sheet-grid';
+      for (let i = 0; i < onThisPage; i++) {
+        const slot = document.createElement('div');
+        slot.className = `sheet-slot${cutMarks && perPage > 1 ? ' cut-marks' : ''}`;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = '列印預覽';
+        slot.appendChild(img);
+        grid.appendChild(slot);
+      }
+      const footer = document.createElement('div');
+      footer.className = 'sheet-footer';
+      footer.textContent = FOOTER_TEXT;
+      sheet.append(grid, footer);
+
+      const caption = document.createElement('p');
+      caption.className = 'sheet-caption';
+      caption.textContent = `第 ${p + 1} / ${totalPages} 頁`;
+
+      host.append(sheet, caption);
+    }
+    if (totalPages > shown) {
+      const more = document.createElement('p');
+      more.className = 'sheet-caption';
+      more.textContent = `⋯ 其餘 ${totalPages - shown} 頁內容相同`;
+      host.appendChild(more);
+    }
+  }
+
+  async doPrint() {
+    if (!this.hasResult) { toast('請先生成圖片', 'error'); return; }
+    const { perPage, copies, cutMarks } = this.print;
+    toast(`準備 ${Math.ceil(copies / perPage)} 頁…`);
+    try {
+      const dataUrl = this.printImageDataUrl();
+      const pages = buildPrintPages({ dataUrl, copies, perPage, cutMarks });
+      await printPages(pages);
+    } catch (err) {
+      console.error(err);
+      toast('列印準備失敗', 'error');
+    }
   }
 
   /* ---------------- 匯出 ---------------- */

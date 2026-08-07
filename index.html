@@ -171,6 +171,65 @@
           </section>
 
           <section class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 class="section-title mb-0">列印（旅團用）</h2>
+              <span class="small-note" id="printSummary">—</span>
+            </div>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs block mb-1 text-white/60" for="printMode">用途</label>
+                <select id="printMode" class="field w-full">
+                  <option value="lineart" selected>填色線稿（純黑線 / 留白上色）</option>
+                  <option value="trace">描繪底稿（淡灰 / 照著畫）</option>
+                  <option value="finished">完整成品</option>
+                </select>
+                <p class="small-note mt-1" id="printModeHint">團員自己上色，最省墨。</p>
+              </div>
+
+              <div>
+                <label class="text-xs block mb-1 text-white/60" for="printPerPage">每頁張數</label>
+                <select id="printPerPage" class="field w-full">
+                  <option value="1" selected>1 張 / 頁（整頁大圖）</option>
+                  <option value="2">2 張 / 頁</option>
+                  <option value="4">4 張 / 頁（小卡）</option>
+                </select>
+              </div>
+
+              <div>
+                <div class="flex justify-between mb-1">
+                  <label class="text-xs text-white/60" for="printCopies">列印份數</label>
+                  <span id="printCopiesValue" class="text-xs text-accent">20</span>
+                </div>
+                <input type="range" id="printCopies" min="1" max="120" value="20">
+                <p class="small-note mt-1">全團印同一個圖樣，一人一張。</p>
+              </div>
+
+              <div class="space-y-2">
+                <div id="thresholdRow">
+                  <div class="flex justify-between mb-1">
+                    <label class="text-xs text-white/60" for="printThreshold">線稿濃度</label>
+                    <span id="printThresholdValue" class="text-xs text-accent">190</span>
+                  </div>
+                  <input type="range" id="printThreshold" min="120" max="235" value="190">
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="printCutMarks" checked class="w-4 h-4">
+                  <span class="text-xs text-white/60">多格時顯示裁切虛線</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="flex gap-2 mt-4 flex-wrap">
+              <button id="printPreviewBtn" class="btn-secondary flex-1 py-2 rounded-lg text-sm" disabled>更新預覽</button>
+              <button id="printBtn" class="btn-primary flex-1 py-2 rounded-lg text-sm" disabled>列印 / 存成 PDF (P)</button>
+            </div>
+
+            <div id="printPreview" class="print-preview-frame mt-4" hidden></div>
+            <p class="small-note mt-2">提示：在列印對話框選「另存為 PDF」即可先存檔，帶去影印店印一疊。版面已設定 A4 直向、10mm 邊界。</p>
+          </section>
+
+          <section class="glass-card p-5">
             <h2 class="section-title">原始圖片</h2>
             <div class="preview-wrapper">
               <canvas id="originalCanvas" hidden></canvas>
