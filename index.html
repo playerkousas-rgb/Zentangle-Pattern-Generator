@@ -3,73 +3,51 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>禪繞畫工具 - Zentangle Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="description" content="禪繞畫工具：上傳圖片，自動分區並填入禪繞（Zentangle）圖案，一鍵匯出 PNG。">
+  <meta name="theme-color" content="#02133E">
+  <title>禪繞畫工具 - Zentangle Pattern Generator</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Noto Sans TC', system-ui, sans-serif; background: #02133E; color: #fff; min-height: 100vh; }
-    .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
-    .btn-primary { background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%); color: #000; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-secondary { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.3s ease; color: #fff; }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-    input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
-    .preview-wrapper { background: #fff; border-radius: 12px; overflow: hidden; }
-    .preview-wrapper canvas { display: block; width: 100%; height: auto; }
-    .pattern-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; }
-    .pattern-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; cursor: pointer; overflow: hidden; position: relative; transition: transform .18s ease, border-color .18s ease; }
-    .pattern-item:hover { transform: scale(1.05); }
-    .pattern-item.selected { border-color: #00d4ff; box-shadow: 0 0 0 2px rgba(0,212,255,.25); }
-    .pattern-item .check-mark { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: #111; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
-    .pattern-item.selected .check-mark { display: flex; }
-    .upload-zone { border: 2px dashed rgba(255, 255, 255, 0.3); border-radius: 16px; transition: all 0.3s ease; cursor: pointer; }
-    .upload-zone:hover, .upload-zone.dragover { border-color: #00d4ff; background: rgba(0, 212, 255, 0.1); }
-    .processing-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; justify-content: center; z-index: 50; }
-    .spinner { width: 50px; height: 50px; border: 3px solid #ddd; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .tab-btn { padding: 8px 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); cursor: pointer; border: none; }
-    .tab-btn.active { background: #00d4ff; color: #000; font-weight: 700; }
-    .region-assign { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
-    .region-card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px; text-align: center; position: relative; }
-    .pattern-picker-popup { display: none; position: absolute; z-index: 80; left: 50%; transform: translateX(-50%); top: 76px; width: 170px; max-height: 220px; overflow: auto; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 8px; background: rgba(2, 19, 62, .98); border: 1px solid rgba(0,212,255,.45); border-radius: 10px; box-shadow: 0 18px 45px rgba(0,0,0,.35); }
-    .pattern-picker-popup.active { display: grid; }
-    .footer-text { color: rgba(255, 255, 255, 0.4); font-size: 12px; }
-    .placeholder { color: #999; text-align: center; padding: 60px 20px; }
-    .guide-box { background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 12px; margin-top: 12px; }
-    .guide-box h3 { color: #00d4ff; font-size: 13px; margin-bottom: 6px; }
-    .guide-box ul { color: rgba(255, 255, 255, 0.72); font-size: 11px; padding-left: 16px; }
-    .guide-box li { margin-bottom: 3px; }
-    .small-note { color: rgba(255,255,255,.45); font-size: 11px; line-height: 1.45; }
-  </style>
 </head>
-<body style="background: #02133E;">
+<body>
+  <a href="#previewContainer" class="skip-link">跳到預覽</a>
+
   <div class="min-h-screen p-4 md:p-8">
     <header class="max-w-7xl mx-auto mb-6">
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
-          <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
+          <h1 class="text-3xl font-bold text-accent">禪繞畫工具</h1>
+          <p class="text-white/50 mt-1 text-sm">High Quality Zentangle Pattern Generator</p>
         </div>
-        <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          下載 PNG
-        </button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="text-xs text-white/60" for="exportScale">匯出倍率</label>
+          <select id="exportScale" class="field w-20" aria-label="匯出倍率">
+            <option value="1">1x</option>
+            <option value="2" selected>2x</option>
+            <option value="3">3x</option>
+          </select>
+          <button id="copyBtn" class="btn-secondary px-4 py-3 rounded-lg text-sm" disabled title="複製結果到剪貼簿 (C)">複製</button>
+          <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center gap-2" disabled title="下載 PNG (D)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            下載 PNG
+          </button>
+        </div>
       </div>
     </header>
 
     <main class="max-w-7xl mx-auto">
       <div class="grid lg:grid-cols-3 gap-6">
+        <!-- 左欄 -->
         <div class="lg:col-span-1 space-y-5">
-          <div class="glass-card p-5">
-            <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
-            <div id="uploadZone" class="upload-zone p-6 text-center">
-              <input type="file" id="fileInput" accept="image/*" style="display: none;">
-              <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊或拖放圖片</p>
+          <section class="glass-card p-5">
+            <h2 class="section-title">上傳圖片</h2>
+            <div id="uploadZone" class="upload-zone p-6 text-center" tabindex="0" role="button" aria-label="點擊或拖放圖片上傳">
+              <input type="file" id="fileInput" accept="image/*" hidden>
+              <svg class="w-10 h-10 mx-auto mb-3 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+              <p class="text-white/60 text-sm">點擊、拖放，或直接貼上 (Ctrl+V) 圖片</p>
+              <p id="fileMeta" class="small-note mt-2"></p>
             </div>
             <div class="guide-box">
               <h3>📸 上傳指引</h3>
@@ -80,108 +58,125 @@
                 <li>如背景複雜，可提高「背景容差」後重新生成</li>
               </ul>
             </div>
-          </div>
+          </section>
 
-          <div class="glass-card p-5">
-            <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/46)</h2>
-            <div id="patternGrid" class="pattern-grid"></div>
-            <div class="mt-3 flex gap-2">
-              <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
-              <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
+          <section class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3 gap-2">
+              <h2 class="section-title mb-0">選擇圖案 (<span id="selectedCount">0</span>/<span id="totalCount">0</span>)</h2>
+              <input id="patternSearch" class="field w-24" type="search" placeholder="搜尋…" aria-label="搜尋圖案">
+            </div>
+            <div id="patternGrid" class="pattern-grid" role="listbox" aria-multiselectable="true" aria-label="禪繞圖案清單"></div>
+            <div class="mt-3 grid grid-cols-3 gap-2">
+              <button id="selectAllBtn" class="btn-secondary py-2 rounded-lg text-xs">全選</button>
+              <button id="randomBtn" class="btn-secondary py-2 rounded-lg text-xs">隨機 8 款</button>
+              <button id="clearAllBtn" class="btn-secondary py-2 rounded-lg text-xs">清除</button>
             </div>
             <p class="small-note mt-2">提示：不選「空白」時，結果會更像滿版禪繞畫。</p>
-          </div>
+          </section>
 
-          <div class="glass-card p-5">
-            <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">設定</h2>
+          <section class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="section-title mb-0">設定</h2>
+              <button id="resetBtn" class="btn-secondary px-3 py-1 rounded text-xs">重設</button>
+            </div>
             <div class="space-y-4">
               <div>
-                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">分區數量</label><span id="regionValue" class="text-xs" style="color: #00d4ff;">8</span></div>
+                <div class="flex justify-between mb-1"><label class="text-xs text-white/60" for="regionSlider">分區數量</label><span id="regionValue" class="text-xs text-accent">8</span></div>
                 <input type="range" id="regionSlider" min="2" max="16" value="8">
               </div>
               <div>
-                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">圖案大小</label><span id="densityValue" class="text-xs" style="color: #00d4ff;">52</span></div>
+                <div class="flex justify-between mb-1"><label class="text-xs text-white/60" for="densitySlider">圖案大小</label><span id="densityValue" class="text-xs text-accent">52</span></div>
                 <input type="range" id="densitySlider" min="18" max="120" value="52">
               </div>
               <div>
-                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">線條粗細</label><span id="strokeValue" class="text-xs" style="color: #00d4ff;">1.2px</span></div>
+                <div class="flex justify-between mb-1"><label class="text-xs text-white/60" for="strokeSlider">線條粗細</label><span id="strokeValue" class="text-xs text-accent">1.2px</span></div>
                 <input type="range" id="strokeSlider" min="6" max="24" value="12">
               </div>
               <div>
-                <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">背景容差 / 邊緣敏感度</label><span id="thresholdValue" class="text-xs" style="color: #00d4ff;">70</span></div>
+                <div class="flex justify-between mb-1"><label class="text-xs text-white/60" for="thresholdSlider">背景容差 / 邊緣敏感度</label><span id="thresholdValue" class="text-xs text-accent">70</span></div>
                 <input type="range" id="thresholdSlider" min="25" max="160" value="70">
               </div>
-              <div class="flex items-center gap-2">
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="addShading" checked class="w-4 h-4">
-                <label for="addShading" class="text-xs" style="color: rgba(255,255,255,0.6);">柔和陰影 / 分區深淺</label>
-              </div>
-              <div class="flex items-center gap-2">
+                <span class="text-xs text-white/60">柔和陰影 / 分區深淺</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="showOutline" checked class="w-4 h-4">
-                <label for="showOutline" class="text-xs" style="color: rgba(255,255,255,0.6);">保留內部特徵線，不畫黑色外輪廓</label>
-              </div>
+                <span class="text-xs text-white/60">保留內部特徵線</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="autoGenerate" checked class="w-4 h-4">
+                <span class="text-xs text-white/60">調整後自動重繪</span>
+              </label>
               <div>
-                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">特徵線強度</label>
-                <select id="featureStrength" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                <label class="text-xs block mb-1 text-white/60" for="featureStrength">特徵線強度</label>
+                <select id="featureStrength" class="field w-full">
                   <option value="low">低 - 只保留最明顯特徵</option>
                   <option value="medium" selected>中 - 平衡</option>
                   <option value="high">高 - 保留更多內部線條</option>
                 </select>
               </div>
               <div>
-                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">背景</label>
-                <select id="bgOption" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                <label class="text-xs block mb-1 text-white/60" for="bgOption">背景</label>
+                <select id="bgOption" class="field w-full">
                   <option value="white">主體外全白</option>
                   <option value="transparent">主體外透明</option>
                 </select>
               </div>
             </div>
-            <button id="generateBtn" class="btn-primary w-full mt-4 py-2 rounded-lg" disabled>生成</button>
-          </div>
+            <button id="generateBtn" class="btn-primary w-full mt-4 py-2 rounded-lg" disabled>生成 (G)</button>
+          </section>
         </div>
 
+        <!-- 右欄 -->
         <div class="lg:col-span-2 space-y-5">
-          <div class="glass-card p-5">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-base font-semibold" style="color: #00d4ff;">預覽</h2>
-              <div class="flex gap-2">
-                <button class="tab-btn active" data-view="final">結果</button>
-                <button class="tab-btn" data-view="regions">分區</button>
+          <section class="glass-card p-5">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 class="section-title mb-0">預覽</h2>
+              <div class="flex gap-2 items-center">
+                <button class="tab-btn active" data-view="final" type="button">結果</button>
+                <button class="tab-btn" data-view="regions" type="button">分區</button>
+                <button id="compareBtn" class="btn-secondary px-3 py-1 rounded text-xs" disabled title="按住顯示原圖 (空白鍵)">比對原圖</button>
               </div>
             </div>
             <div id="previewContainer" class="preview-wrapper relative" style="min-height: 350px;">
               <div id="placeholderText" class="placeholder absolute inset-0 flex items-center justify-center">
                 <div>
-                  <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                  <p style="font-size: 14px;">上傳圖片開始</p>
+                  <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  <p class="text-sm">上傳圖片開始</p>
                 </div>
               </div>
-              <canvas id="mainCanvas" style="display: none;"></canvas>
-              <canvas id="regionCanvas" style="display: none; position: absolute; top: 0; left: 0;"></canvas>
-              <div id="processingOverlay" class="processing-overlay" style="display: none;">
-                <div class="text-center">
+              <canvas id="mainCanvas" hidden></canvas>
+              <canvas id="regionCanvas" hidden style="position:absolute;top:0;left:0;"></canvas>
+              <canvas id="compareCanvas" hidden style="position:absolute;top:0;left:0;"></canvas>
+              <div id="processingOverlay" class="processing-overlay" hidden>
+                <div class="text-center w-56">
                   <div class="spinner mx-auto mb-3"></div>
-                  <p style="color: #333; font-size: 14px;" id="processingText">處理中...</p>
+                  <p class="text-neutral-700 text-sm" id="processingText">處理中...</p>
+                  <div class="progress mt-2"><div id="progressBar" class="progress-bar"></div></div>
                 </div>
               </div>
             </div>
-          </div>
+            <p class="small-note mt-2">快捷鍵：G 生成 · D 下載 · C 複製 · R 重新分區 · 空白鍵比對原圖</p>
+          </section>
 
-          <div id="regionAssignView" class="glass-card p-5" style="display: none;">
+          <section id="regionAssignView" class="glass-card p-5" hidden>
             <div class="flex items-center justify-between mb-3">
-              <h2 class="text-base font-semibold" style="color: #00d4ff;">分區設定</h2>
-              <button id="shuffleBtn" class="btn-secondary px-3 py-1 rounded text-xs">重新分區 / 隨機置換</button>
+              <h2 class="section-title mb-0">分區設定</h2>
+              <button id="shuffleBtn" class="btn-secondary px-3 py-1 rounded text-xs">重新分區 / 隨機置換 (R)</button>
             </div>
+            <p class="small-note mb-3">在上方分區預覽點一下色塊，可直接切換該區的圖案。</p>
             <div id="regionAssignGrid" class="region-assign"></div>
             <button id="applyAssignBtn" class="btn-primary w-full mt-3 py-2 rounded-lg text-sm">應用</button>
-          </div>
+          </section>
 
-          <div class="glass-card p-5">
-            <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">原始圖片</h2>
+          <section class="glass-card p-5">
+            <h2 class="section-title">原始圖片</h2>
             <div class="preview-wrapper">
-              <canvas id="originalCanvas" style="display: none;"></canvas>
-              <div id="originalPlaceholder" class="placeholder" style="padding: 40px;">尚未上傳</div>
+              <canvas id="originalCanvas" hidden></canvas>
+              <div id="originalPlaceholder" class="placeholder" style="padding:40px;">尚未上傳</div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </main>
@@ -191,776 +186,8 @@
     </footer>
   </div>
 
-<script>
-class ZentangleGenerator {
-  constructor() {
-    this.mainCanvas = document.getElementById('mainCanvas');
-    this.regionCanvas = document.getElementById('regionCanvas');
-    this.originalCanvas = document.getElementById('originalCanvas');
-    this.mainCtx = this.mainCanvas.getContext('2d', { willReadFrequently: true });
-    this.regionCtx = this.regionCanvas.getContext('2d', { willReadFrequently: true });
-    this.originalCtx = this.originalCanvas.getContext('2d', { willReadFrequently: true });
+  <div id="toastHost" class="toast-host" role="status" aria-live="polite"></div>
 
-    this.originalImage = null;
-    this.sourceData = null;
-    this.visibleMask = null; // 可見主體；會自動移除透明 PNG 外圍白邊
-    this.fillMask = null;    // 真正填禪繞圖案的區域，會排除白底與透明背景
-    this.lineMask = null;
-    this.regions = [];
-    this.selectedPatterns = new Set();
-    this.regionPatternAssign = [];
-    this.partitionSalt = Math.random() * 10000;
-    this.patternCache = new Map();
-
-    this.settings = {
-      density: 52,
-      strokeWidth: 1.2,
-      threshold: 70,
-      regionCount: 8,
-      addShading: true,
-      showOutline: true,
-      featureStrength: 'medium',
-      bgOption: 'white'
-    };
-
-    this.patterns = [
-      { name: '空白', url: '/patterns/blank.svg', isBlank: true },
-      ...Array.from({ length: 45 }, (_, i) => ({ name: `圖案 ${i + 1}`, url: `/patterns/${i + 1}.svg` }))
-    ];
-
-    this.bindEvents();
-    this.generatePatternGrid();
-  }
-
-  el(id) { return document.getElementById(id); }
-  sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-  clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-  idx(x, y, w) { return y * w + x; }
-  luma(r, g, b) { return 0.299 * r + 0.587 * g + 0.114 * b; }
-  colorDist(r1, g1, b1, r2, g2, b2) { const dr=r1-r2, dg=g1-g2, db=b1-b2; return Math.sqrt(dr*dr + dg*dg + db*db); }
-  isNearWhite(r, g, b, a = 255) { return a > 10 && r > 232 && g > 232 && b > 232 && Math.max(r,g,b) - Math.min(r,g,b) < 28; }
-
-  makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-
-  seededRand(seed) {
-    const x = Math.sin(seed * 12.9898 + this.partitionSalt * 78.233) * 43758.5453;
-    return x - Math.floor(x);
-  }
-
-  bindEvents() {
-    const uz = this.el('uploadZone');
-    const fi = this.el('fileInput');
-    uz.onclick = () => fi.click();
-    uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
-    uz.ondragleave = () => uz.classList.remove('dragover');
-    uz.ondrop = e => { e.preventDefault(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
-    fi.onchange = e => { if (e.target.files[0]) this.load(e.target.files[0]); };
-
-    this.el('densitySlider').oninput = e => { this.settings.density = +e.target.value; this.el('densityValue').textContent = e.target.value; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(); };
-    this.el('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value / 10; this.el('strokeValue').textContent = this.settings.strokeWidth.toFixed(1) + 'px'; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(true); };
-    this.el('thresholdSlider').oninput = e => { this.settings.threshold = +e.target.value; this.el('thresholdValue').textContent = e.target.value; if (this.originalImage) this.generateDebounced(true); };
-    this.el('regionSlider').oninput = e => { this.settings.regionCount = +e.target.value; this.el('regionValue').textContent = e.target.value; this.regionPatternAssign = []; if (this.originalImage) this.generateDebounced(true); };
-    this.el('addShading').onchange = e => { this.settings.addShading = e.target.checked; if (this.originalImage) this.generate(); };
-    this.el('showOutline').onchange = e => { this.settings.showOutline = e.target.checked; if (this.originalImage) this.generate(); };
-    this.el('featureStrength').onchange = e => { this.settings.featureStrength = e.target.value; if (this.originalImage) this.generateDebounced(true); };
-    this.el('bgOption').onchange = e => { this.settings.bgOption = e.target.value; if (this.originalImage) this.generate(); };
-
-    this.el('generateBtn').onclick = () => this.generate(true);
-    this.el('downloadBtn').onclick = () => this.download();
-    this.el('selectAllBtn').onclick = () => this.selectAll(true);
-    this.el('clearAllBtn').onclick = () => this.clearAll();
-    this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
-    this.el('applyAssignBtn').onclick = () => this.generate();
-
-    document.addEventListener('click', () => document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')));
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.onclick = e => {
-        document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        const view = e.currentTarget.dataset.view;
-        this.el('regionAssignView').style.display = view === 'regions' ? 'block' : 'none';
-        this.regionCanvas.style.display = view === 'regions' ? 'block' : 'none';
-        this.mainCanvas.style.display = view === 'regions' ? 'none' : 'block';
-      };
-    });
-  }
-
-  generateDebounced(reanalyse = false) {
-    clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => this.generate(reanalyse), 220);
-  }
-
-  generatePatternGrid() {
-    const grid = this.el('patternGrid');
-    grid.innerHTML = '';
-    this.patterns.forEach((pattern, i) => {
-      const item = document.createElement('div');
-      item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''}`;
-      item.title = pattern.name;
-      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>`;
-      item.onclick = () => this.togglePattern(i);
-      grid.appendChild(item);
-    });
-    this.updateCount();
-  }
-
-  togglePattern(i) {
-    if (this.selectedPatterns.has(i)) this.selectedPatterns.delete(i); else this.selectedPatterns.add(i);
-    document.querySelectorAll('.pattern-item').forEach((el, idx) => el.classList.toggle('selected', this.selectedPatterns.has(idx)));
-    this.updateCount();
-    if (this.originalImage && this.selectedPatterns.size > 0) { this.assignPatterns(); this.generate(); }
-  }
-
-  updateCount() { this.el('selectedCount').textContent = this.selectedPatterns.size; }
-
-  selectAll(includeBlank = true) {
-    this.selectedPatterns.clear();
-    this.patterns.forEach((_, i) => { if (includeBlank || i !== 0) this.selectedPatterns.add(i); });
-    document.querySelectorAll('.pattern-item').forEach((el, i) => el.classList.toggle('selected', this.selectedPatterns.has(i)));
-    this.updateCount();
-    if (this.originalImage) { this.assignPatterns(); this.generate(); }
-  }
-
-  clearAll() {
-    this.selectedPatterns.clear();
-    document.querySelectorAll('.pattern-item').forEach(el => el.classList.remove('selected'));
-    this.updateCount();
-  }
-
-  load(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        this.originalImage = img;
-        this.partitionSalt = Math.random() * 10000;
-        this.regionPatternAssign = [];
-        let w = img.width, h = img.height;
-        const maxSide = 1200;
-        if (w > maxSide || h > maxSide) {
-          const scale = maxSide / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-        [this.mainCanvas, this.regionCanvas, this.originalCanvas].forEach(canvas => { canvas.width = w; canvas.height = h; });
-        this.originalCtx.clearRect(0,0,w,h);
-        this.originalCtx.drawImage(img, 0, 0, w, h);
-        this.sourceData = this.originalCtx.getImageData(0, 0, w, h);
-        this.originalCanvas.style.display = 'block';
-        this.el('originalPlaceholder').style.display = 'none';
-        this.el('generateBtn').disabled = false;
-        if (this.selectedPatterns.size === 0) this.selectAll(false); // 自動不包含「空白」，避免大片留白
-        else this.generate(true);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  async generate(reanalyse = false, randomizeAssign = false) {
-    if (!this.originalImage || this.selectedPatterns.size === 0) return;
-    const w = this.mainCanvas.width, h = this.mainCanvas.height;
-    this.el('processingOverlay').style.display = 'flex';
-    this.el('placeholderText').style.display = 'none';
-    this.mainCanvas.style.display = 'block';
-    await this.sleep(20);
-
-    if (reanalyse || !this.fillMask || this.fillMask.length !== w * h) {
-      this.el('processingText').textContent = '智能提取主體與透明背景...';
-      await this.sleep(10);
-      this.extractMasks(w, h);
-      this.el('processingText').textContent = '提取內部特徵線...';
-      await this.sleep(10);
-      this.lineMask = this.extractLineMask(w, h);
-      this.el('processingText').textContent = '建立高質分區...';
-      await this.sleep(10);
-      this.regions = this.segment(w, h);
-      this.assignPatterns(randomizeAssign);
-      this.drawRegionPreview(w, h);
-    }
-
-    this.el('processingText').textContent = '套用禪繞圖案...';
-    await this.render(w, h);
-    this.el('processingOverlay').style.display = 'none';
-  }
-
-  extractMasks(w, h) {
-    const data = this.sourceData.data;
-    const visible = new Uint8Array(w * h);
-    const fill = new Uint8Array(w * h);
-    let transparentCount = 0;
-    for (let i = 0; i < w * h; i++) if (data[i * 4 + 3] < 250) transparentCount++;
-    const hasTransparency = transparentCount > w * h * 0.01;
-
-    if (hasTransparency) {
-      // 透明 PNG 常見有「貼紙白邊」。舊版會把白邊保留下來；
-      // 這裡改成只移除「連到透明外部」的近白像素，內部高光仍可保留。
-      const borderWhite = this.findConnectedWhiteBorder(w, h, data);
-      let alphaCount = 0, visibleCount = 0;
-      for (let i = 0; i < w * h; i++) {
-        const p = i * 4;
-        const a = data[p + 3], r = data[p], g = data[p + 1], b = data[p + 2];
-        if (a > 18) {
-          alphaCount++;
-          if (!borderWhite[i]) {
-            visible[i] = 255;
-            visibleCount++;
-            // 填圖案時仍避開內部純白高光，讓眼睛反光等特徵較乾淨。
-            if (!this.isNearWhite(r, g, b, a)) fill[i] = 255;
-          }
-        }
-      }
-      // 如果圖片本身就是白色主體，避免誤刪太多。
-      if (visibleCount < alphaCount * 0.2) {
-        visible.fill(0); fill.fill(0);
-        for (let i = 0; i < w * h; i++) {
-          const p = i * 4;
-          if (data[p + 3] > 18) {
-            visible[i] = 255;
-            if (!this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3])) fill[i] = 255;
-          }
-        }
-      }
-    } else {
-      const bg = this.estimateBackgroundColor(w, h, data);
-      const bgVisited = this.floodBackground(w, h, data, bg, this.settings.threshold);
-      for (let i = 0; i < w * h; i++) {
-        if (!bgVisited[i]) {
-          visible[i] = 255;
-          const p = i * 4;
-          if (!this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3])) fill[i] = 255;
-        }
-      }
-    }
-
-    this.visibleMask = this.closeMask(this.keepLargestComponents(visible, w, h, 2), w, h, 1);
-    // 確保填圖案區域一定在可見主體內，避免外圍白邊或背景被填滿。
-    for (let i = 0; i < fill.length; i++) if (!this.visibleMask[i]) fill[i] = 0;
-    const cleanedFill = this.openMask(this.closeMask(fill, w, h, 2), w, h, 1);
-    let count = 0; for (let i = 0; i < cleanedFill.length; i++) if (cleanedFill[i]) count++;
-    this.fillMask = count > 100 ? cleanedFill : this.visibleMask.slice();
-  }
-
-  findConnectedWhiteBorder(w, h, data) {
-    const border = new Uint8Array(w * h);
-    const q = [];
-    const isAlpha = (id) => data[id * 4 + 3] > 18;
-    const isBorderWhitePixel = (id) => {
-      const p = id * 4;
-      return isAlpha(id) && this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3]);
-    };
-    const push = (id) => { if (id >= 0 && id < w*h && !border[id] && isBorderWhitePixel(id)) { border[id] = 1; q.push(id); } };
-
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const id = y*w+x;
-        if (!isBorderWhitePixel(id)) continue;
-        let touchesOutside = x === 0 || y === 0 || x === w-1 || y === h-1;
-        if (!touchesOutside) {
-          const ns = [id-1, id+1, id-w, id+w];
-          touchesOutside = ns.some(ni => ni < 0 || ni >= w*h || !isAlpha(ni));
-        }
-        if (touchesOutside) push(id);
-      }
-    }
-
-    for (let head = 0; head < q.length; head++) {
-      const id = q[head];
-      const x = id % w;
-      const ns = [];
-      if (x > 0) ns.push(id-1);
-      if (x < w-1) ns.push(id+1);
-      if (id >= w) ns.push(id-w);
-      if (id < w*(h-1)) ns.push(id+w);
-      ns.forEach(push);
-    }
-    return border;
-  }
-
-  estimateBackgroundColor(w, h, data) {
-    const samples = [];
-    const step = Math.max(1, Math.floor(Math.min(w, h) / 40));
-    for (let x = 0; x < w; x += step) { samples.push([x,0], [x,h-1]); }
-    for (let y = 0; y < h; y += step) { samples.push([0,y], [w-1,y]); }
-    const rs=[], gs=[], bs=[];
-    samples.forEach(([x,y]) => { const p=(y*w+x)*4; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); });
-    rs.sort((a,b)=>a-b); gs.sort((a,b)=>a-b); bs.sort((a,b)=>a-b);
-    const mid = Math.floor(rs.length / 2);
-    return { r: rs[mid] || 255, g: gs[mid] || 255, b: bs[mid] || 255 };
-  }
-
-  floodBackground(w, h, data, bg, tolerance) {
-    const visited = new Uint8Array(w * h);
-    const qx = [], qy = [];
-    const push = (x,y) => { if (x>=0 && x<w && y>=0 && y<h) { qx.push(x); qy.push(y); } };
-    for (let x = 0; x < w; x++) { push(x,0); push(x,h-1); }
-    for (let y = 0; y < h; y++) { push(0,y); push(w-1,y); }
-    let head = 0;
-    while (head < qx.length) {
-      const x = qx[head], y = qy[head++];
-      const id = y * w + x;
-      if (visited[id]) continue;
-      const p = id * 4;
-      const dist = this.colorDist(data[p], data[p+1], data[p+2], bg.r, bg.g, bg.b);
-      const isWhiteBg = this.isNearWhite(bg.r, bg.g, bg.b) && this.isNearWhite(data[p], data[p+1], data[p+2], data[p+3]);
-      if (dist > tolerance && !isWhiteBg) continue;
-      visited[id] = 255;
-      push(x+1,y); push(x-1,y); push(x,y+1); push(x,y-1);
-    }
-    return visited;
-  }
-
-  dilate(mask, w, h, radius = 1) {
-    const out = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      let on = false;
-      for (let dy = -radius; dy <= radius && !on; dy++) for (let dx = -radius; dx <= radius; dx++) {
-        const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && nx < w && ny >= 0 && ny < h && mask[ny*w+nx]) { on = true; break; }
-      }
-      if (on) out[y*w+x] = 255;
-    }
-    return out;
-  }
-
-  erode(mask, w, h, radius = 1) {
-    const out = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      let on = true;
-      for (let dy = -radius; dy <= radius && on; dy++) for (let dx = -radius; dx <= radius; dx++) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || nx >= w || ny < 0 || ny >= h || !mask[ny*w+nx]) { on = false; break; }
-      }
-      if (on) out[y*w+x] = 255;
-    }
-    return out;
-  }
-
-  closeMask(mask, w, h, r = 1) { return this.erode(this.dilate(mask, w, h, r), w, h, r); }
-  openMask(mask, w, h, r = 1) { return this.dilate(this.erode(mask, w, h, r), w, h, r); }
-
-  keepLargestComponents(mask, w, h, maxComponents = 2) {
-    const seen = new Uint8Array(w*h);
-    const comps = [];
-    for (let i = 0; i < w*h; i++) {
-      if (!mask[i] || seen[i]) continue;
-      const q = [i], pixels = [];
-      seen[i] = 1;
-      for (let head = 0; head < q.length; head++) {
-        const id = q[head]; pixels.push(id);
-        const x = id % w, y = Math.floor(id / w);
-        const ns = [id-1, id+1, id-w, id+w];
-        for (const ni of ns) {
-          const nx = ni % w, ny = Math.floor(ni / w);
-          if (ni < 0 || ni >= w*h || seen[ni] || !mask[ni]) continue;
-          if (Math.abs(nx - x) + Math.abs(ny - y) !== 1) continue;
-          seen[ni] = 1; q.push(ni);
-        }
-      }
-      if (pixels.length > 20) comps.push(pixels);
-    }
-    comps.sort((a,b) => b.length - a.length);
-    const out = new Uint8Array(w*h);
-    comps.slice(0, maxComponents).forEach(c => c.forEach(id => out[id] = 255));
-    return out;
-  }
-
-  featureConfig() {
-    const mode = this.settings.featureStrength || 'medium';
-    const configs = {
-      low:    { innerRadius: 5, darkMin: 34, darkMul: 0.55, gradMin: 54, gradMul: 1.25, colorMin: 58, colorMul: 0.78, alpha: 135, dilate: false },
-      medium: { innerRadius: 3, darkMin: 38, darkMul: 0.68, gradMin: 38, gradMul: 0.95, colorMin: 34, colorMul: 0.55, alpha: 180, dilate: false },
-      high:   { innerRadius: 2, darkMin: 43, darkMul: 0.84, gradMin: 28, gradMul: 0.70, colorMin: 24, colorMul: 0.36, alpha: 220, dilate: true }
-    };
-    return configs[mode] || configs.medium;
-  }
-
-  extractLineMask(w, h) {
-    const d = this.sourceData.data;
-    const line = new Uint8Array(w * h);
-    const dark = new Uint8Array(w * h);
-    const sensitivity = this.settings.threshold;
-    const cfg = this.featureConfig();
-
-    // 不要黑色外輪廓：先把可見主體往內縮，只在內縮後的區域找特徵線。
-    // 這樣外型邊界、透明 PNG 邊界、以及外框白邊位置都不會被畫成黑線。
-    const innerMask = this.erode(this.visibleMask, w, h, cfg.innerRadius);
-
-    // 深色區域只取「內部邊界」，不整片塗黑，避免眼睛/耳尖蓋住禪繞圖案。
-    for (let i = 0; i < w*h; i++) {
-      if (!innerMask[i]) continue;
-      const p = i * 4;
-      const lum = this.luma(d[p], d[p+1], d[p+2]);
-      if (lum < Math.max(cfg.darkMin, sensitivity * cfg.darkMul)) dark[i] = 255;
-    }
-    const darkBoundary = this.boundaryMask(dark, w, h, 1);
-
-    for (let y = 1; y < h - 1; y++) {
-      for (let x = 1; x < w - 1; x++) {
-        const id = y*w+x;
-        if (!innerMask[id]) continue;
-        const pp = id * 4;
-        const centerLum = this.luma(d[pp], d[pp+1], d[pp+2]);
-        const centerColor = [d[pp], d[pp+1], d[pp+2]];
-        const safeLum = (xx,yy) => {
-          const ni = yy*w+xx;
-          if (!innerMask[ni]) return centerLum;
-          const p=(ni)*4;
-          return this.luma(d[p], d[p+1], d[p+2]);
-        };
-        const safeColor = (xx,yy) => {
-          const ni = yy*w+xx;
-          if (!innerMask[ni]) return centerColor;
-          const p=(ni)*4;
-          return [d[p], d[p+1], d[p+2]];
-        };
-
-        const gx = -safeLum(x-1,y-1) - 2*safeLum(x-1,y) - safeLum(x-1,y+1) + safeLum(x+1,y-1) + 2*safeLum(x+1,y) + safeLum(x+1,y+1);
-        const gy = -safeLum(x-1,y-1) - 2*safeLum(x,y-1) - safeLum(x+1,y-1) + safeLum(x-1,y+1) + 2*safeLum(x,y+1) + safeLum(x+1,y+1);
-        const grad = Math.sqrt(gx*gx + gy*gy);
-        const c = centerColor;
-        const cr = safeColor(x+1,y), cb = safeColor(x,y+1), cl = safeColor(x-1,y), ct = safeColor(x,y-1);
-        const colorEdge = Math.max(
-          this.colorDist(c[0],c[1],c[2],cr[0],cr[1],cr[2]),
-          this.colorDist(c[0],c[1],c[2],cb[0],cb[1],cb[2]),
-          this.colorDist(c[0],c[1],c[2],cl[0],cl[1],cl[2]),
-          this.colorDist(c[0],c[1],c[2],ct[0],ct[1],ct[2])
-        );
-        const hardEdge = grad > Math.max(cfg.gradMin, sensitivity * cfg.gradMul) || colorEdge > Math.max(cfg.colorMin, sensitivity * cfg.colorMul);
-        if (hardEdge || darkBoundary[id]) line[id] = 255;
-      }
-    }
-
-    let out = (cfg.dilate || this.settings.strokeWidth >= 2.1) ? this.dilate(line, w, h, 1) : line;
-    // dilation 之後再次限制在 innerMask，確保完全不畫最外黑輪廓。
-    for (let i = 0; i < w*h; i++) if (!innerMask[i]) out[i] = 0;
-    return out;
-  }
-
-  maskToCanvas(mask, w, h, alpha = 255) {
-    const c = this.makeCanvas(w, h);
-    const ctx = c.getContext('2d');
-    const img = ctx.createImageData(w, h);
-    for (let i = 0; i < w*h; i++) {
-      if (mask[i]) {
-        const p = i*4;
-        img.data[p] = img.data[p+1] = img.data[p+2] = 255;
-        img.data[p+3] = alpha;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    return c;
-  }
-
-  segment(w, h) {
-    const regions = [];
-    const n = this.settings.regionCount;
-    const mask = this.fillMask;
-    const pixels = [];
-    let minX=w, minY=h, maxX=0, maxY=0, sumX=0, sumY=0;
-    for (let y=0; y<h; y++) for (let x=0; x<w; x++) if (mask[y*w+x]) {
-      pixels.push(y*w+x); sumX+=x; sumY+=y; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
-    }
-    if (!pixels.length) return regions;
-    const cx = sumX / pixels.length, cy = sumY / pixels.length;
-    const seeds = [];
-    const bw = Math.max(1, maxX-minX), bh = Math.max(1, maxY-minY);
-    for (let i=0; i<n; i++) {
-      // Golden-angle seeds：比純隨機更平均，而且加少量 salt 讓「重新分區」有效
-      const a = i * 2.399963 + this.seededRand(i+1) * 0.65;
-      const rr = Math.sqrt((i + 0.55) / n);
-      let sx = Math.round(cx + Math.cos(a) * bw * 0.42 * rr);
-      let sy = Math.round(cy + Math.sin(a) * bh * 0.42 * rr);
-      let best = pixels[Math.floor(this.seededRand(i+50) * pixels.length)];
-      let bestD = Infinity;
-      for (let k=0; k<80; k++) {
-        const candidate = pixels[Math.floor(this.seededRand(i*101 + k) * pixels.length)];
-        const x = candidate % w, y = Math.floor(candidate / w);
-        const dd = (x-sx)*(x-sx) + (y-sy)*(y-sy);
-        if (dd < bestD) { bestD = dd; best = candidate; }
-      }
-      sx = best % w; sy = Math.floor(best / w);
-      const p = best * 4;
-      seeds.push({ x: sx, y: sy, r: this.sourceData.data[p], g: this.sourceData.data[p+1], b: this.sourceData.data[p+2] });
-    }
-
-    for (let i=0; i<n; i++) regions.push({ mask: new Uint8Array(w*h) });
-    for (const id of pixels) {
-      const x = id % w, y = Math.floor(id / w), p = id * 4;
-      let best = 0, bestScore = Infinity;
-      for (let i=0; i<n; i++) {
-        const s = seeds[i];
-        const spatial = Math.hypot((x-s.x)/Math.max(50,bw), (y-s.y)/Math.max(50,bh)) * 100;
-        const color = this.colorDist(this.sourceData.data[p], this.sourceData.data[p+1], this.sourceData.data[p+2], s.r, s.g, s.b) * 0.12;
-        const score = spatial + color + this.seededRand(i*999 + id*0.001) * 2;
-        if (score < bestScore) { bestScore = score; best = i; }
-      }
-      regions[best].mask[id] = 255;
-    }
-    return regions.filter(r => r.mask.some(Boolean));
-  }
-
-  assignPatterns(randomize = false) {
-    let selected = Array.from(this.selectedPatterns);
-    if (!selected.length || !this.regions.length) return;
-    // 隨機排列時盡量避免抽到「空白」，除非使用者只選了空白。
-    const nonBlank = selected.filter(i => i !== 0);
-    const pool = nonBlank.length ? nonBlank : selected;
-
-    if (randomize) {
-      this.regionPatternAssign = this.regions.map((_, i) => {
-        const idx = Math.floor(this.seededRand(i * 97 + pool.length * 13 + 5) * pool.length) % pool.length;
-        return pool[idx];
-      });
-      // 避免相鄰區域太常連續同圖案。
-      if (pool.length > 1) {
-        for (let i = 1; i < this.regionPatternAssign.length; i++) {
-          if (this.regionPatternAssign[i] === this.regionPatternAssign[i-1]) {
-            const current = pool.indexOf(this.regionPatternAssign[i]);
-            this.regionPatternAssign[i] = pool[(current + 1 + Math.floor(this.seededRand(i * 41) * (pool.length - 1))) % pool.length];
-          }
-        }
-      }
-    } else {
-      this.regionPatternAssign = this.regions.map((_, i) => selected[i % selected.length]);
-    }
-    this.updateRegionUI();
-  }
-
-  updateRegionUI() {
-    const grid = this.el('regionAssignGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const colors = ['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7','#fd79a8','#a29bfe','#00b894','#e17055','#0984e3','#6c5ce7','#feca57'];
-    this.regions.forEach((_, i) => {
-      const currentIdx = this.regionPatternAssign[i] ?? Array.from(this.selectedPatterns)[0] ?? 0;
-      const p = this.patterns[currentIdx];
-      const card = document.createElement('div');
-      card.className = 'region-card';
-      card.innerHTML = `<div class="flex items-center justify-center gap-1 mb-2"><div style="width:8px;height:8px;border-radius:50%;background:${colors[i%colors.length]}"></div><span class="text-[10px] text-white/60">區域 ${i+1}</span></div>`;
-      const previewBtn = document.createElement('div');
-      previewBtn.className = 'w-12 h-12 border border-white/20 rounded cursor-pointer overflow-hidden bg-white hover:border-cyan-400 transition-all flex items-center justify-center mx-auto';
-      previewBtn.innerHTML = p.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${p.url}" class="w-full h-full object-contain p-1" alt="${p.name}">`;
-      const picker = document.createElement('div');
-      picker.className = 'pattern-picker-popup';
-      Array.from(this.selectedPatterns).forEach(idx => {
-        const opt = document.createElement('button');
-        opt.type = 'button';
-        opt.className = 'picker-option hover:bg-white/20 p-1 cursor-pointer rounded transition-colors bg-white';
-        opt.innerHTML = this.patterns[idx].isBlank ? '<div class="w-8 h-8 bg-white mx-auto"></div>' : `<img src="${this.patterns[idx].url}" class="w-8 h-8 object-contain mx-auto" alt="${this.patterns[idx].name}">`;
-        opt.onclick = e => { e.stopPropagation(); this.regionPatternAssign[i] = idx; this.updateRegionUI(); this.render(this.mainCanvas.width, this.mainCanvas.height); };
-        picker.appendChild(opt);
-      });
-      previewBtn.onclick = e => { e.stopPropagation(); const open = picker.classList.contains('active'); document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); if (!open) picker.classList.add('active'); };
-      card.appendChild(previewBtn);
-      card.appendChild(picker);
-      grid.appendChild(card);
-    });
-  }
-
-  drawRegionPreview(w, h) {
-    const colors = [[255,107,107],[78,205,196],[69,183,209],[150,206,180],[255,234,167],[253,121,168],[162,155,254],[0,184,148],[225,112,85],[9,132,227],[108,92,231],[254,202,87]];
-    const img = this.regionCtx.createImageData(w, h);
-    for (let i=0; i<this.regions.length; i++) {
-      const [r,g,b] = colors[i % colors.length];
-      const m = this.regions[i].mask;
-      for (let p=0; p<w*h; p++) if (m[p]) { const q=p*4; img.data[q]=r; img.data[q+1]=g; img.data[q+2]=b; img.data[q+3]=220; }
-    }
-    this.regionCtx.clearRect(0,0,w,h);
-    this.regionCtx.putImageData(img, 0, 0);
-    this.regionCtx.globalCompositeOperation = 'multiply';
-    this.regionCtx.drawImage(this.originalCanvas, 0, 0);
-    this.regionCtx.globalCompositeOperation = 'source-over';
-  }
-
-  loadImage(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = url;
-    });
-  }
-
-  async getPatternTile(patternIndex) {
-    const pattern = this.patterns[patternIndex];
-    if (!pattern || pattern.isBlank) return null;
-    const size = Math.round(this.settings.density);
-    const key = `${patternIndex}-${size}-${this.settings.strokeWidth.toFixed(1)}-seamless2`;
-    if (this.patternCache.has(key)) return this.patternCache.get(key);
-
-    const img = await this.loadImage(pattern.url);
-    const base = this.makeCanvas(size, size);
-    const bctx = base.getContext('2d', { willReadFrequently: true });
-    bctx.clearRect(0,0,size,size);
-
-    // SVG 圖案不少筆畫剛好碰到 tile 邊界，repeat 時就會出現一條條橫線/格線。
-    // 這裡裁掉外圍 9% 再放大，並把 tile 邊緣 alpha 淡出，避免接縫被看見。
-    const iw = img.naturalWidth || img.width || 200;
-    const ih = img.naturalHeight || img.height || 200;
-    const crop = 0.09;
-    bctx.drawImage(img, iw*crop, ih*crop, iw*(1-crop*2), ih*(1-crop*2), 0, 0, size, size);
-
-    let image = bctx.getImageData(0,0,size,size);
-    const d = image.data;
-    const fadeEdge = Math.max(2, Math.round(size * 0.055));
-    for (let y=0; y<size; y++) {
-      for (let x=0; x<size; x++) {
-        const i = y*size + x;
-        const p=i*4;
-        const avg=(d[p]+d[p+1]+d[p+2])/3;
-        const ink=this.clamp((246-avg)*2.05, 0, 235);
-        const distEdge = Math.min(x, y, size-1-x, size-1-y);
-        const edgeFade = this.clamp(distEdge / fadeEdge, 0, 1);
-        d[p]=d[p+1]=d[p+2]=0;
-        d[p+3]=ink > 12 ? Math.round(ink * edgeFade) : 0;
-      }
-    }
-    bctx.clearRect(0,0,size,size);
-    bctx.putImageData(image,0,0);
-
-    const thick = this.makeCanvas(size, size);
-    const tctx = thick.getContext('2d');
-    const radius = Math.max(0, Math.round((this.settings.strokeWidth - 1) * 0.9));
-    tctx.globalAlpha = 0.86;
-    if (radius > 0) {
-      for (let dy=-radius; dy<=radius; dy++) for (let dx=-radius; dx<=radius; dx++) {
-        if (dx*dx + dy*dy <= radius*radius) tctx.drawImage(base, dx, dy);
-      }
-    }
-    tctx.drawImage(base, 0, 0);
-
-    this.patternCache.set(key, thick);
-    return thick;
-  }
-
-  async fillRegionWithPattern(ctx, regionMask, patternIndex, w, h, tint = 0, regionIndex = 0) {
-    if (patternIndex === 0) return;
-    const tile = await this.getPatternTile(patternIndex);
-    if (!tile) return;
-    const layer = this.makeCanvas(w, h);
-    const lctx = layer.getContext('2d');
-    const pattern = lctx.createPattern(tile, 'repeat');
-    if (!pattern) return;
-
-    // 每個區域用不同 offset / rotation / scale，避免所有圖案都從同一個水平線開始排列。
-    const offsetX = this.seededRand(patternIndex * 37 + regionIndex * 101 + 1) * tile.width;
-    const offsetY = this.seededRand(patternIndex * 53 + regionIndex * 89 + 2) * tile.height;
-    const angle = (this.seededRand(patternIndex * 71 + regionIndex * 43 + 3) - 0.5) * Math.PI * 0.55;
-    const scale = 0.92 + this.seededRand(patternIndex * 29 + regionIndex * 67 + 4) * 0.18;
-
-    lctx.save();
-    lctx.translate(w / 2 + offsetX, h / 2 + offsetY);
-    lctx.rotate(angle);
-    lctx.scale(scale, scale);
-    lctx.fillStyle = pattern;
-    lctx.fillRect(-w * 1.8, -h * 1.8, w * 3.6, h * 3.6);
-    lctx.restore();
-
-    lctx.globalCompositeOperation = 'destination-in';
-    lctx.drawImage(this.maskToCanvas(regionMask, w, h), 0, 0);
-    lctx.globalCompositeOperation = 'source-over';
-    if (tint > 0) {
-      lctx.globalCompositeOperation = 'source-atop';
-      lctx.fillStyle = `rgba(0,0,0,${tint})`;
-      lctx.fillRect(0,0,w,h);
-      lctx.globalCompositeOperation = 'source-over';
-    }
-    ctx.drawImage(layer, 0, 0);
-  }
-
-  drawMaskInk(ctx, mask, w, h, color = [0,0,0,255]) {
-    const img = ctx.createImageData(w,h);
-    const [r,g,b,a] = color;
-    for (let i=0; i<w*h; i++) if (mask[i]) { const p=i*4; img.data[p]=r; img.data[p+1]=g; img.data[p+2]=b; img.data[p+3]=a; }
-    ctx.putImageData(img,0,0);
-  }
-
-  boundaryMask(mask, w, h, thickness = 1) {
-    const dil = this.dilate(mask, w, h, thickness);
-    const ero = this.erode(mask, w, h, thickness);
-    const out = new Uint8Array(w*h);
-    for (let i=0; i<w*h; i++) if (dil[i] && !ero[i]) out[i] = 255;
-    return out;
-  }
-
-  async render(w, h) {
-    const result = this.makeCanvas(w, h);
-    const ctx = result.getContext('2d', { willReadFrequently: true });
-
-    if (this.settings.bgOption === 'white') {
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, w, h);
-    } else {
-      ctx.clearRect(0, 0, w, h);
-    }
-
-    // 先放白色底形：透明 PNG 的外圍白邊已在遮罩階段移除。
-    // 注意：用獨立 layer 裁切，避免白底模式被 destination-in 變成透明。
-    const whiteShape = this.maskToCanvas(this.visibleMask, w, h);
-    const shapeLayer = this.makeCanvas(w, h);
-    const shapeCtx = shapeLayer.getContext('2d');
-    shapeCtx.fillStyle = '#fff';
-    shapeCtx.fillRect(0,0,w,h);
-    shapeCtx.globalCompositeOperation = 'destination-in';
-    shapeCtx.drawImage(whiteShape,0,0);
-    ctx.drawImage(shapeLayer, 0, 0);
-
-    // 每個分區填不同禪繞圖案；圖案本身是透明底黑線，不會再讓畫面變灰。
-    for (let i=0; i<this.regions.length; i++) {
-      const pi = this.regionPatternAssign[i] ?? Array.from(this.selectedPatterns)[0] ?? 0;
-      const tint = this.settings.addShading ? (i % 4) * 0.025 : 0;
-      await this.fillRegionWithPattern(ctx, this.regions[i].mask, pi, w, h, tint, i);
-    }
-
-    // 柔和的灰階陰影：用原圖明暗做非常淡的 multiply，提升立體感但不污染成大片灰。
-    if (this.settings.addShading) {
-      const shade = this.makeCanvas(w,h);
-      const sctx = shade.getContext('2d');
-      const img = sctx.createImageData(w,h);
-      const d = this.sourceData.data;
-      for (let i=0; i<w*h; i++) {
-        if (!this.fillMask[i]) continue;
-        const p=i*4;
-        const lum = this.luma(d[p], d[p+1], d[p+2]);
-        const alpha = this.clamp((210 - lum) * 0.18, 0, 28);
-        img.data[p]=0; img.data[p+1]=0; img.data[p+2]=0; img.data[p+3]=alpha;
-      }
-      sctx.putImageData(img,0,0);
-      ctx.drawImage(shade,0,0);
-    }
-
-    if (this.settings.showOutline) {
-      const lineCanvas = this.makeCanvas(w,h);
-      const lctx = lineCanvas.getContext('2d');
-      const alpha = this.featureConfig().alpha;
-      // 只畫內部特徵線；不再另外畫黑色外輪廓。
-      this.drawMaskInk(lctx, this.lineMask, w, h, [0,0,0,alpha]);
-      ctx.drawImage(lineCanvas, 0, 0);
-    }
-
-    // 最終裁切：透明背景模式下，主體外 alpha = 0；白底模式則維持白色。
-    if (this.settings.bgOption === 'transparent') {
-      const final = ctx.getImageData(0,0,w,h);
-      const fd = final.data;
-      for (let i=0; i<w*h; i++) if (!this.visibleMask[i]) fd[i*4+3] = 0;
-      ctx.putImageData(final,0,0);
-    }
-
-    this.mainCtx.clearRect(0,0,w,h);
-    this.mainCtx.drawImage(result,0,0);
-  }
-
-  download() {
-    if (!this.originalImage) return;
-    const link = document.createElement('a');
-    link.download = `zentangle-${Date.now()}.png`;
-    link.href = this.mainCanvas.toDataURL('image/png');
-    link.click();
-  }
-}
-
-new ZentangleGenerator();
-</script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>
