@@ -94,7 +94,12 @@
           <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
           <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
         </div>
-        <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <button id="printBtn" class="btn-secondary px-5 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+            列印
+          </button>
+          <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           下載 PNG
         </button>
@@ -143,6 +148,10 @@
               <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
               <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
             </div>
+            <button id="printSheetBtn" class="btn-secondary w-full mt-2 py-2 rounded-lg text-xs flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+              列印圖案參考表（45 款）
+            </button>
             <p class="small-note mt-2">提示：不選「空白」時，結果會更像滿版禪繞畫。</p>
           </div>
 
@@ -260,6 +269,10 @@
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 6.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
       <span>分享</span>
     </button>
+    <button id="barPrintBtn" class="btn-secondary px-4 rounded-lg flex items-center justify-center gap-2" aria-label="列印作品">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+      <span>列印</span>
+    </button>
     <button id="barDownloadBtn" class="btn-primary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="下載 PNG">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
       <span>下載 PNG</span>
@@ -370,6 +383,9 @@ class ZentangleGenerator {
 
     this.el('generateBtn').onclick = () => this.generate(true);
     this.el('downloadBtn').onclick = () => this.download();
+    this.el('printBtn').onclick = () => this.printArtwork();
+    this.el('barPrintBtn').onclick = () => this.printArtwork();
+    this.el('printSheetBtn').onclick = () => this.printPatternSheet();
     this.el('selectAllBtn').onclick = () => this.selectAll(true);
     this.el('clearAllBtn').onclick = () => this.clearAll();
     this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
@@ -1229,6 +1245,78 @@ class ZentangleGenerator {
   }
 
   toPNGBlob() { return new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png')); }
+
+  // ===== 列印 =====
+  // 用隱藏 iframe 生成獨立列印文件：只印作品／圖案表，唔會印到 App 介面。
+  printHTML(html) {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    const kick = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {} };
+    // 等文件內所有圖片載入先叫 print，唔會印出空白頁
+    const win = iframe.contentWindow;
+    const waitImgs = () => {
+      const imgs = Array.from(doc.images || []);
+      let pending = imgs.length;
+      if (!pending) { setTimeout(kick, 80); return; }
+      let done = false;
+      const next = () => { if (done) return; if (--pending <= 0) { done = true; setTimeout(kick, 80); } };
+      imgs.forEach(im => { if (im.complete) next(); else { im.onload = next; im.onerror = next; } });
+      setTimeout(() => { if (!done) { done = true; kick(); } }, 4000); // 保險：最多等 4 秒
+    };
+    if (doc.readyState === 'complete') waitImgs();
+    else win.addEventListener('load', waitImgs);
+    setTimeout(() => iframe.remove(), 60000); // 列印對話框關閉後清走 iframe
+  }
+
+  printArtwork() {
+    if (!this.originalImage) { this.toast('請先上傳圖片並生成', false); return; }
+    try {
+      const dataUrl = this.mainCanvas.toDataURL('image/png'); // 同步取圖，保留用戶手勢
+      const landscape = this.mainCanvas.width > this.mainCanvas.height;
+      this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>禪繞畫 Zentangle</title><style>
+        @page { size: A4 ${landscape ? 'landscape' : 'portrait'}; margin: 10mm; }
+        html, body { margin: 0; padding: 0; background: #fff; }
+        body { min-height: 96vh; display: flex; align-items: center; justify-content: center; }
+        img { max-width: 100%; max-height: 96vh; }
+      </style></head><body><img src="${dataUrl}" alt="Zentangle artwork"></body></html>`);
+      this.toast('已開啟列印');
+    } catch (err) {
+      this.toast('列印失敗，請再試一次', false);
+    }
+  }
+
+  printPatternSheet() {
+    try {
+      const cells = this.patterns
+        .filter(p => !p.isBlank)
+        .map((p, i) => `<div class="cell"><div class="imgbox"><img src="${p.url}" alt=""></div><span>${i + 1}</span></div>`)
+        .join('');
+      this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Zentangle 圖案參考表</title><style>
+        @page { size: A4 portrait; margin: 10mm; }
+        html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+        h1 { font-size: 15px; text-align: center; margin: 0 0 8px; }
+        .sub { font-size: 9px; color: #666; text-align: center; margin-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4mm; }
+        .cell { border: 0.4mm solid #bbb; border-radius: 2mm; padding: 2mm; text-align: center; }
+        .imgbox { height: 20mm; display: flex; align-items: center; justify-content: center; }
+        .imgbox img { max-width: 100%; max-height: 100%; }
+        .cell span { display: block; font-size: 9px; color: #444; margin-top: 1.5mm; }
+      </style></head><body>
+        <h1>Zentangle 圖案參考表 · Scout System</h1>
+        <p class="sub">共 45 款 · 配合「禪繞畫工具」使用</p>
+        <div class="grid">${cells}</div>
+      </body></html>`);
+      this.toast('已開啟圖案參考表列印');
+    } catch (err) {
+      this.toast('列印失敗，請再試一次', false);
+    }
+  }
 
   async download() {
     if (!this.originalImage) return;
