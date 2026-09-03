@@ -84,6 +84,32 @@
       .pattern-picker-popup .picker-option img, .pattern-picker-popup .picker-option > div { width: 46px; height: 46px; }
       body.picker-open::before { content: ''; position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 210; }
     }
+
+    /* ===== 彈窗 / 圖鑑 / 列印選單 ===== */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .62); z-index: 240; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.active { display: flex; }
+    .modal-card { background: #04193f; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(0, 212, 255, .35); border-radius: 16px; width: 100%; max-width: 660px; max-height: 88vh; overflow: auto; padding: 20px; }
+    @media (max-width: 640px) { .modal-backdrop { padding: 0; align-items: flex-end; } .modal-card { max-width: 100%; max-height: 94vh; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); } }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; position: sticky; top: 0; background: #04193f; padding: 2px 0 8px; z-index: 2; }
+    .modal-title { color: #00d4ff; font-weight: 700; font-size: 16px; margin: 0; }
+    .modal-x { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 16px; cursor: pointer; flex: none; }
+    .modal-menu-btn { display: flex; width: 100%; text-align: left; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #fff; cursor: pointer; margin-bottom: 8px; font-size: 14px; }
+    .modal-menu-btn:hover { background: rgba(255,255,255,.14); }
+    .fav-star { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: rgba(2,19,62,.55); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: rgba(255,255,255,.4); z-index: 2; cursor: pointer; padding: 0; }
+    .fav-star.on { color: #ffd166; }
+    #patternGrid.fav-filter .pattern-item:not(.favorite) { display: none; }
+    .fav-btn-active { background: #00d4ff !important; color: #000 !important; font-weight: 700; }
+    .atlas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; margin-top: 14px; }
+    .atlas-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; overflow: hidden; position: relative; cursor: pointer; }
+    .atlas-item.current { border-color: #00d4ff; box-shadow: 0 0 0 2px rgba(0,212,255,.3); }
+    .atlas-item img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+    .guide-h4 { color: #00d4ff; font-size: 14px; margin: 16px 0 6px; font-weight: 600; }
+    .guide-p { color: rgba(255,255,255,.78); font-size: 13.5px; line-height: 1.7; margin: 0 0 8px; }
+    .guide-li { color: rgba(255,255,255,.78); font-size: 13px; line-height: 1.8; }
+    .glossary { display: grid; grid-template-columns: 1fr; gap: 6px; }
+    @media (min-width: 480px) { .glossary { grid-template-columns: 1fr 1fr; } }
+    .glossary div { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: rgba(255,255,255,.78); line-height: 1.55; }
+    .glossary b { color: #7ee7ff; }
   </style>
 </head>
 <body style="background: #02133E;">
@@ -95,6 +121,12 @@
           <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
         </div>
         <div class="flex gap-2 flex-wrap">
+          <button id="guideBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="新手指南">
+            ❓<span class="hidden sm:inline text-sm">新手指南</span>
+          </button>
+          <button id="atlasBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="圖案圖鑑">
+            📖<span class="hidden sm:inline text-sm">圖鑑</span>
+          </button>
           <button id="printBtn" class="btn-secondary px-5 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
             列印
@@ -144,9 +176,11 @@
           <div class="glass-card p-5 card-patterns">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/46)</h2>
             <div id="patternGrid" class="pattern-grid"></div>
-            <div class="mt-3 flex gap-2">
+            <div class="mt-3 flex gap-2 flex-wrap">
               <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
               <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
+              <button id="randomPickBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs" title="隨機揀 6 款">🎲 隨機</button>
+              <button id="favFilterBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs" title="只顯示最愛">⭐ 最愛</button>
             </div>
             <button id="printSheetBtn" class="btn-secondary w-full mt-2 py-2 rounded-lg text-xs flex items-center justify-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
@@ -181,6 +215,10 @@
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="stringLines" checked class="w-4 h-4">
                 <label for="stringLines" class="text-xs" style="color: rgba(255,255,255,0.6);">分區串線（區與區之間嘅墨線）</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="practiceMode" class="w-4 h-4">
+                <label for="practiceMode" class="text-xs" style="color: rgba(255,255,255,0.6);">練習稿模式（只畫淺灰串線，自己手填圖案）</label>
               </div>
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="showOutline" checked class="w-4 h-4">
@@ -260,6 +298,65 @@
 
   <div id="toastContainer" aria-live="polite"></div>
 
+  <div id="printMenu" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-head"><h3 class="modal-title">🖨️ 列印</h3><button class="modal-x" data-close>✕</button></div>
+      <button class="modal-menu-btn" data-print="artwork">🎨 <span><b>作品</b> — A4 全頁，直接填色</span></button>
+      <button class="modal-menu-btn" data-print="sheet">📋 <span><b>圖案參考表</b> — 45 款一頁</span></button>
+      <button class="modal-menu-btn" data-print="square">⬜ <span><b>空白方磚</b> — 經典 89mm ×6</span></button>
+      <button class="modal-menu-btn" data-print="zendala">⚪ <span><b>空白 Zendala 圓磚</b> — ⌀89mm ×6</span></button>
+      <button class="modal-menu-btn" data-print="bijou">▪️ <span><b>空白 Bijou 小磚</b> — 51mm ×12</span></button>
+    </div>
+  </div>
+
+  <div id="guideModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head"><h3 class="modal-title">❓ 禪繞畫新手指南</h3><button class="modal-x" data-close>✕</button></div>
+      <h4 class="guide-h4">咩係禪繞畫？</h4>
+      <p class="guide-p">禪繞畫（Zentangle®）由 Rick Roberts 同 Maria Thomas 創立：用最簡單嘅點、線、面，一筆一筆畫出結構化圖案。過程專注、放鬆，而且<b style="color:#7ee7ff">冇嘢係「錯」</b>——官方文化甚至唔用橡皮擦，所有意外筆觸都可以變成圖案嘅一部分。</p>
+      <h4 class="guide-h4">傳統五步（本工具已代你做咗一半）</h4>
+      <div class="glossary">
+        <div><b>1. 感恩放鬆</b> — 深呼吸，當作冥想時間</div>
+        <div><b>2. 點四角</b> — 喺紙上點四個角 + 畫邊框</div>
+        <div><b>3. 畫串線 String</b> — 隨手畫幾條線將畫面分格（= 本工具嘅「分區」）</div>
+        <div><b>4. 填圖案 Tangle</b> — 每一格填一種重複圖案（= 本工具自動幫你填）</div>
+        <div><b>5. 陰影 + 簽名</b> — 鉛筆加陰影，簽名欣賞</div>
+      </div>
+      <h4 class="guide-h4">名詞小字典</h4>
+      <div class="glossary">
+        <div><b>畫磚 Tile</b> — 官方標準 89mm 正方形畫紙</div>
+        <div><b>串線 String</b> — 分格線，通常鉛筆畫、好淡</div>
+        <div><b>圖案 Tangle</b> — 重複結構嘅花紋，全世界有過千款</div>
+        <div><b>Zendala</b> — 圓形畫磚，曼陀羅風格</div>
+        <div><b>Bijou</b> — 51mm 細畫磚</div>
+        <div><b>Monotangle</b> — 成幅只用一種圖案嘅作品</div>
+      </div>
+      <h4 class="guide-h4">用本工具嘅兩種玩法</h4>
+      <p class="guide-p">🎨 <b>自動生成</b>：上傳/影相 → 自動分區同填圖案 → 列印做填色稿或作品</p>
+      <p class="guide-p">✍️ <b>手動練習</b>：開「練習稿模式」印返淨係得淺灰串線嘅稿，自己照住「圖案參考表」一格一格填——呢個先係最原汁原味嘅禪繞體驗</p>
+    </div>
+  </div>
+
+  <div id="atlasModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head"><h3 class="modal-title">📖 圖案圖鑑（45 款）</h3><button class="modal-x" data-close>✕</button></div>
+      <div class="flex gap-3 items-center flex-wrap" style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 12px;">
+        <img id="atlasMainImg" src="/patterns/1.svg" alt="" style="width: 132px; height: 132px; background: #fff; border-radius: 10px; object-fit: contain; padding: 6px; flex: none;">
+        <div style="min-width: 150px; flex: 1;">
+          <p id="atlasMainName" style="color: #fff; font-weight: 700; font-size: 16px; margin: 0 0 4px;">圖案 1</p>
+          <p id="atlasPos" style="color: rgba(255,255,255,.45); font-size: 12px; margin: 0 0 10px;">1 / 45</p>
+          <div class="flex gap-2 flex-wrap">
+            <button id="atlasPrevBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">← 上一款</button>
+            <button id="atlasNextBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">下一款 →</button>
+            <button id="atlasFavBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">⭐ 最愛</button>
+          </div>
+        </div>
+      </div>
+      <div id="atlasGrid" class="atlas-grid"></div>
+      <p class="small-note" style="margin-top: 10px;">撳圖可以放大睇；撳左上角星星加減最愛。最愛咗嘅圖案可以用主介面嘅「⭐ 最愛」快速篩選。</p>
+    </div>
+  </div>
+
   <div class="mobile-action-bar">
     <button id="barGenerateBtn" class="btn-secondary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="重新生成">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -299,6 +396,9 @@ class ZentangleGenerator {
     this.regionPatternAssign = [];
     this.partitionSalt = Math.random() * 10000;
     this.patternCache = new Map();
+    this.favorites = this.loadFavs();
+    this._favFilter = false;
+    this._atlasCur = 1;
     this.regionLabelMap = null;
     this.regionAdj = [];
     this.regionSizes = null;
@@ -313,7 +413,8 @@ class ZentangleGenerator {
       showOutline: true,
       featureStrength: 'medium',
       bgOption: 'white',
-      stringLines: true
+      stringLines: true,
+      practiceMode: false
     };
 
     this.patterns = [
@@ -377,15 +478,41 @@ class ZentangleGenerator {
     this.el('regionSlider').oninput = e => { this.settings.regionCount = +e.target.value; this.el('regionValue').textContent = e.target.value; this.regionPatternAssign = []; if (this.originalImage) this.generateDebounced(true); };
     this.el('addShading').onchange = e => { this.settings.addShading = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('stringLines').onchange = e => { this.settings.stringLines = e.target.checked; if (this.originalImage) this.generate(); };
+    this.el('practiceMode').onchange = e => { this.settings.practiceMode = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('showOutline').onchange = e => { this.settings.showOutline = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('featureStrength').onchange = e => { this.settings.featureStrength = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('bgOption').onchange = e => { this.settings.bgOption = e.target.value; if (this.originalImage) this.generate(); };
 
     this.el('generateBtn').onclick = () => this.generate(true);
     this.el('downloadBtn').onclick = () => this.download();
-    this.el('printBtn').onclick = () => this.printArtwork();
-    this.el('barPrintBtn').onclick = () => this.printArtwork();
+    this.el('printBtn').onclick = () => this.openModal('printMenu');
+    this.el('barPrintBtn').onclick = () => this.openModal('printMenu');
     this.el('printSheetBtn').onclick = () => this.printPatternSheet();
+    this.el('guideBtn').onclick = () => this.openModal('guideModal');
+    this.el('atlasBtn').onclick = () => this.openAtlas();
+    this.el('atlasFavBtn').onclick = () => { if (this._atlasCur) this.toggleFav(this._atlasCur); };
+    this.el('atlasPrevBtn').onclick = () => this.atlasStep(-1);
+    this.el('atlasNextBtn').onclick = () => this.atlasStep(1);
+    this.el('randomPickBtn').onclick = () => this.randomPick();
+    this.el('favFilterBtn').onclick = () => this.toggleFavFilter();
+    document.querySelectorAll('#printMenu [data-print]').forEach(b => {
+      b.onclick = () => {
+        this.closeModal('printMenu');
+        const act = b.dataset.print;
+        if (act === 'artwork') this.printArtwork();
+        else if (act === 'sheet') this.printPatternSheet();
+        else this.printBlankTiles(act);
+      };
+    });
+    document.querySelectorAll('[data-close]').forEach(b => {
+      b.onclick = e => { e.stopPropagation(); const mb = b.closest('.modal-backdrop'); if (mb) this.closeModal(mb.id); };
+    });
+    document.querySelectorAll('.modal-backdrop').forEach(mb => {
+      mb.addEventListener('click', e => { if (e.target === mb) this.closeModal(mb.id); });
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.active').forEach(mb => this.closeModal(mb.id));
+    });
     this.el('selectAllBtn').onclick = () => this.selectAll(true);
     this.el('clearAllBtn').onclick = () => this.clearAll();
     this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
@@ -407,13 +534,17 @@ class ZentangleGenerator {
     grid.innerHTML = '';
     this.patterns.forEach((pattern, i) => {
       const item = document.createElement('div');
-      item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''}`;
+      item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''} ${!pattern.isBlank && this.favorites.has(i) ? 'favorite' : ''}`;
       item.title = pattern.name;
-      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>`;
+      const star = pattern.isBlank ? '' : `<button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}" title="最愛">${this.favorites.has(i) ? '★' : '☆'}</button>`;
+      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>${star}`;
       item.onclick = () => this.togglePattern(i);
+      const st = item.querySelector('.fav-star');
+      if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
       grid.appendChild(item);
     });
     this.updateCount();
+    this.refreshFavUI();
   }
 
   togglePattern(i) {
@@ -1125,6 +1256,19 @@ class ZentangleGenerator {
       ctx.clearRect(0, 0, w, h);
     }
 
+    // 練習稿模式：只畫淺灰串線，等用戶自己手填圖案（最原汁原味嘅玩法）
+    if (this.settings.practiceMode) {
+      const line = this.stringLineMask(w, h);
+      if (line) {
+        const c = this.makeCanvas(w, h);
+        this.drawMaskInk(c.getContext('2d'), this.dilate(line, w, h, 1), w, h, [128, 128, 128, 205]);
+        ctx.drawImage(c, 0, 0);
+      }
+      this.mainCtx.clearRect(0, 0, w, h);
+      this.mainCtx.drawImage(result, 0, 0);
+      return;
+    }
+
     // 先放白色底形：透明 PNG 的外圍白邊已在遮罩階段移除。
     // 注意：用獨立 layer 裁切，避免白底模式被 destination-in 變成透明。
     const whiteShape = this.maskToCanvas(this.visibleMask, w, h);
@@ -1153,22 +1297,12 @@ class ZentangleGenerator {
 
     // 分區串線（string）：沿住區域邊界畫墨線，係真禪繞嘅靈魂。
     if (this.settings.stringLines && this.regionLabelMap) {
-      const lm = this.regionLabelMap;
-      const line = new Uint8Array(w * h);
-      for (let y = 0; y < h; y++) {
-        const row = y * w;
-        for (let x = 0; x < w; x++) {
-          const id = row + x;
-          const a = lm[id];
-          if (!a) continue;
-          if (x > 0 && lm[id-1] && lm[id-1] !== a) { line[id] = 255; line[id-1] = 255; }
-          if (y > 0 && lm[id-w] && lm[id-w] !== a) { line[id] = 255; line[id-w] = 255; }
-        }
+      const line = this.stringLineMask(w, h);
+      if (line) {
+        const stringCanvas = this.makeCanvas(w, h);
+        this.drawMaskInk(stringCanvas.getContext('2d'), this.dilate(line, w, h, 1), w, h, [17, 17, 17, 235]);
+        ctx.drawImage(stringCanvas, 0, 0);
       }
-      const stringCanvas = this.makeCanvas(w, h);
-      const strCtx = stringCanvas.getContext('2d');
-      this.drawMaskInk(strCtx, this.dilate(line, w, h, 1), w, h, [17, 17, 17, 235]);
-      ctx.drawImage(stringCanvas, 0, 0);
     }
 
     // 柔和的灰階陰影：用原圖明暗做非常淡的 multiply，提升立體感但不污染成大片灰。
@@ -1354,6 +1488,144 @@ class ZentangleGenerator {
       if (err && err.name === 'AbortError') return; // 使用者取消分享
       this.download();
     }
+  }
+
+  // ===== 彈窗 =====
+  openModal(id) { this.el(id).classList.add('active'); }
+  closeModal(id) { this.el(id).classList.remove('active'); }
+
+  // ===== 最愛 =====
+  loadFavs() { try { return new Set(JSON.parse(localStorage.getItem('zt-favs') || '[]')); } catch (e) { return new Set(); } }
+  saveFavs() { try { localStorage.setItem('zt-favs', JSON.stringify(Array.from(this.favorites))); } catch (e) {} }
+
+  toggleFav(i) {
+    if (!i) return;
+    if (this.favorites.has(i)) this.favorites.delete(i); else this.favorites.add(i);
+    this.saveFavs();
+    this.refreshFavUI();
+    if (this._atlasCur) this.renderAtlasMain(this._atlasCur);
+  }
+
+  refreshFavUI() {
+    document.querySelectorAll('.pattern-item').forEach((el, idx) => {
+      const fav = this.favorites.has(idx);
+      const st = el.querySelector('.fav-star');
+      if (st) { st.classList.toggle('on', fav); st.textContent = fav ? '★' : '☆'; }
+      el.classList.toggle('favorite', fav);
+    });
+    document.querySelectorAll('.atlas-item').forEach(el => {
+      const i = +el.dataset.i;
+      const fav = this.favorites.has(i);
+      const st = el.querySelector('.fav-star');
+      if (st) { st.classList.toggle('on', fav); st.textContent = fav ? '★' : '☆'; }
+    });
+    this.applyFavFilter();
+  }
+
+  applyFavFilter() {
+    this.el('patternGrid').classList.toggle('fav-filter', !!this._favFilter);
+    this.el('favFilterBtn').classList.toggle('fav-btn-active', !!this._favFilter);
+  }
+
+  toggleFavFilter() { this._favFilter = !this._favFilter; this.applyFavFilter(); }
+
+  randomPick() {
+    const pool = this.patterns.map((p, i) => (!p.isBlank ? i : -1)).filter(i => i > 0);
+    const picks = [];
+    while (picks.length < 6 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    this.selectedPatterns = new Set(picks);
+    document.querySelectorAll('.pattern-item').forEach((el, idx) => el.classList.toggle('selected', this.selectedPatterns.has(idx)));
+    this.updateCount();
+    if (this.originalImage) { this.assignPatterns(); this.generate(); }
+    this.toast('🎲 隨機揀咗 6 款圖案');
+  }
+
+  // ===== 圖鑑 =====
+  openAtlas() {
+    if (!this._atlasBuilt) this.renderAtlas();
+    if (!this._atlasCur) this._atlasCur = 1;
+    this.renderAtlasMain(this._atlasCur);
+    this.openModal('atlasModal');
+  }
+
+  renderAtlas() {
+    const grid = this.el('atlasGrid');
+    grid.innerHTML = '';
+    this.patterns.forEach((p, i) => {
+      if (p.isBlank) return;
+      const cell = document.createElement('div');
+      cell.className = 'atlas-item' + (i === this._atlasCur ? ' current' : '');
+      cell.dataset.i = i;
+      cell.innerHTML = `<img src="${p.url}" alt="${p.name}"><button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}">${this.favorites.has(i) ? '★' : '☆'}</button>`;
+      cell.onclick = () => { this._atlasCur = i; this.renderAtlas(); this.renderAtlasMain(i); };
+      const st = cell.querySelector('.fav-star');
+      if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
+      grid.appendChild(cell);
+    });
+    this._atlasBuilt = true;
+  }
+
+  renderAtlasMain(i) {
+    const p = this.patterns[i];
+    if (!p) return;
+    this.el('atlasMainImg').src = p.url;
+    this.el('atlasMainName').textContent = p.name;
+    this.el('atlasPos').textContent = `${i} / 45`;
+    const fb = this.el('atlasFavBtn');
+    const fav = this.favorites.has(i);
+    fb.textContent = fav ? '★ 已係最愛' : '⭐ 最愛';
+    fb.classList.toggle('fav-btn-active', fav);
+    document.querySelectorAll('.atlas-item').forEach(el => el.classList.toggle('current', +el.dataset.i === i));
+  }
+
+  atlasStep(d) {
+    let i = this._atlasCur + d;
+    if (i < 1) i = 45;
+    if (i > 45) i = 1;
+    this._atlasCur = i;
+    this.renderAtlas();
+    this.renderAtlasMain(i);
+  }
+
+  // ===== 空白畫磚列印 =====
+  printBlankTiles(shape) {
+    const cfg = {
+      square:  { count: 6,  cols: 2, css: 'width:89mm;height:89mm;border-radius:1.5mm;',  label: '空白禪繞方磚 · 89mm' },
+      zendala: { count: 6,  cols: 2, css: 'width:89mm;height:89mm;border-radius:50%;',   label: '空白 Zendala 圓磚 · ⌀89mm' },
+      bijou:   { count: 12, cols: 3, css: 'width:51mm;height:51mm;border-radius:1mm;',   label: '空白 Bijou 小磚 · 51mm' }
+    }[shape];
+    if (!cfg) return;
+    let cells = '';
+    for (let i = 0; i < cfg.count; i++) cells += `<div class="tile" style="${cfg.css}"><span>${i + 1}</span></div>`;
+    this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${cfg.label}</title><style>
+      @page { size: A4 portrait; margin: 6mm; }
+      html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+      h1 { font-size: 11px; text-align: center; margin: 0 0 4mm; color: #444; font-weight: normal; }
+      .sheet { display: grid; grid-template-columns: repeat(${cfg.cols}, auto); gap: 5mm; justify-content: center; }
+      .tile { position: relative; border: 0.35mm solid #aaa; }
+      .tile span { position: absolute; right: 2mm; bottom: 1mm; font-size: 8px; color: #bbb; }
+    </style></head><body>
+      <h1>${cfg.label} · Scout System</h1>
+      <div class="sheet">${cells}</div>
+    </body></html>`);
+    this.toast('已開啟空白畫磚列印');
+  }
+
+  stringLineMask(w, h) {
+    const lm = this.regionLabelMap;
+    if (!lm) return null;
+    const line = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const id = row + x;
+        const a = lm[id];
+        if (!a) continue;
+        if (x > 0 && lm[id-1] && lm[id-1] !== a) { line[id] = 255; line[id-1] = 255; }
+        if (y > 0 && lm[id-w] && lm[id-w] !== a) { line[id] = 255; line[id-w] = 255; }
+      }
+    }
+    return line;
   }
 
   toast(msg, ok = true) {
