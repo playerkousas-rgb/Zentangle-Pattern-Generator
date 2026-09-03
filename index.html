@@ -108,15 +108,27 @@
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
             <div id="uploadZone" class="upload-zone p-6 text-center">
               <input type="file" id="fileInput" accept="image/*" style="display: none;">
+              <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
               <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
               <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊、拖放或貼上 (Ctrl+V) 圖片</p>
               <p class="small-note mt-2">支援 PNG / JPG / WebP</p>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button id="cameraBtn" class="btn-primary flex-1 py-3 rounded-lg flex items-center justify-center gap-2 text-sm" aria-label="開啟相機拍照">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>影相 / 拍照</span>
+              </button>
+              <button id="galleryBtn" class="btn-secondary flex-1 py-3 rounded-lg flex items-center justify-center gap-2 text-sm" aria-label="從相簿選圖">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>相簿選圖</span>
+              </button>
             </div>
             <button id="resetBtn" class="btn-secondary w-full mt-3 py-2 rounded-lg text-xs" style="display: none;">清除圖片，重新開始</button>
             <div class="guide-box">
               <h3>📸 上傳指引</h3>
               <ul>
                 <li>透明 PNG / 白底插畫效果最好</li>
+                <li>📱 影相貼士：光線充足、主體填滿畫面、避免陰影和反光</li>
                 <li>會自動保留眼睛、表情等內部特徵線</li>
                 <li>圖案會轉成黑色線條，不再出現灰底</li>
                 <li>如背景複雜，可提高「背景容差」後重新生成</li>
@@ -313,7 +325,12 @@ class ZentangleGenerator {
     uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
     uz.ondragleave = () => uz.classList.remove('dragover');
     uz.ondrop = e => { e.preventDefault(); e.stopPropagation(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
-    fi.onchange = e => { if (e.target.files[0]) this.load(e.target.files[0]); };
+    fi.onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) this.load(f); };
+
+    // 手機直接開相機拍照（capture=environment 用後置鏡頭）
+    this.el('cameraBtn').onclick = () => this.el('cameraInput').click();
+    this.el('galleryBtn').onclick = () => this.el('fileInput').click();
+    this.el('cameraInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) { this._cameraTip = true; this.load(f); } };
 
     // 直接貼上截圖（Ctrl / Cmd + V）
     document.addEventListener('paste', e => {
@@ -424,6 +441,10 @@ class ZentangleGenerator {
         this.el('originalPlaceholder').style.display = 'none';
         this.el('generateBtn').disabled = false;
         this.el('resetBtn').style.display = 'inline-flex';
+        if (this._cameraTip) {
+          this._cameraTip = false;
+          this.toast('已載入相片！如背景被填入圖案，可調高「背景容差」');
+        }
         if (this.selectedPatterns.size === 0) this.selectAll(false); // 自動不包含「空白」，避免大片留白
         else this.generate(true);
         // 手機：上傳後自動捲動到預覽，立刻看到結果

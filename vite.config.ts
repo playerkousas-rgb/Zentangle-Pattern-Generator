@@ -14,11 +14,11 @@ export default defineConfig(async () => {
     plugins,
     server: {
       host: true,
-      allowedHosts: true,
+      allowedHosts: true as const,
     },
     preview: {
       host: true,
-      allowedHosts: true,
+      allowedHosts: true as const,
     },
   };
 })
