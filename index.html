@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>禪繞畫工具 - Zentangle Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -10,17 +10,18 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans TC', system-ui, sans-serif; background: #02133E; color: #fff; min-height: 100vh; }
-    .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
+    .glass-card { background: rgba(255, 255, 255, 0.05); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
     .btn-primary { background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%); color: #000; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-secondary { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.3s ease; color: #fff; }
     .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-    input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
+    input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.2); touch-action: pan-y; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
+    input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: none; border-radius: 50%; background: #00d4ff; cursor: pointer; }
     .preview-wrapper { background: #fff; border-radius: 12px; overflow: hidden; }
     .preview-wrapper canvas { display: block; width: 100%; height: auto; }
-    .pattern-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; }
+    .pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     .pattern-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; cursor: pointer; overflow: hidden; position: relative; transition: transform .18s ease, border-color .18s ease; }
     .pattern-item:hover { transform: scale(1.05); }
     .pattern-item.selected { border-color: #00d4ff; box-shadow: 0 0 0 2px rgba(0,212,255,.25); }
@@ -44,6 +45,45 @@
     .guide-box ul { color: rgba(255, 255, 255, 0.72); font-size: 11px; padding-left: 16px; }
     .guide-box li { margin-bottom: 3px; }
     .small-note { color: rgba(255,255,255,.45); font-size: 11px; line-height: 1.45; }
+    #previewContainer { min-height: 350px; }
+
+    /* ===== 手機友善 / Mobile friendly ===== */
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-tap-highlight-color: transparent; }
+    body, button, select, label { touch-action: manipulation; }
+    .mobile-action-bar { display: none; }
+    #toastContainer { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(100px + env(safe-area-inset-bottom, 0px)); z-index: 300; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: 92vw; }
+    .toast-item { background: rgba(8, 28, 68, .96); border: 1px solid rgba(0, 212, 255, .45); color: #fff; font-size: 13px; padding: 10px 18px; border-radius: 999px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); animation: toastIn .25s ease; max-width: 100%; text-align: center; }
+    .toast-item.err { border-color: rgba(255, 107, 107, .65); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 手機 / 平板：預覽移到上傳之後，並加上底部固定工具列 */
+    @media (max-width: 1023px) {
+      body { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+      .main-grid { display: flex; flex-direction: column; }
+      .col-left, .col-right { display: contents; }
+      .main-grid .col-left > * + *, .main-grid .col-right > * + * { margin-top: 0 !important; }
+      .card-upload { order: 1; }
+      .card-preview { order: 2; }
+      .card-patterns { order: 3; }
+      .card-settings { order: 4; }
+      .card-region { order: 5; }
+      .card-original { order: 6; }
+      .mobile-action-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 120; gap: 10px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgba(2, 19, 62, .94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255, 255, 255, .14); }
+      .mobile-action-bar .btn-primary, .mobile-action-bar .btn-secondary { min-height: 46px; }
+    }
+
+    @media (max-width: 640px) {
+      select { font-size: 16px !important; } /* 避免 iOS 聚焦時放大頁面 */
+      input[type="checkbox"] { width: 20px; height: 20px; }
+      .pattern-grid { max-height: 300px; }
+      #previewContainer { min-height: 260px; }
+      .placeholder { padding: 44px 16px; }
+      /* 圖案選擇彈窗改為置中彈出，不會被畫面邊緣裁掉 */
+      .pattern-picker-popup { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(330px, 88vw); max-height: 48vh; grid-template-columns: repeat(5, 1fr); z-index: 220; }
+      .pattern-picker-popup .picker-option img, .pattern-picker-popup .picker-option > div { width: 46px; height: 46px; }
+      body.picker-open::before { content: ''; position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 210; }
+    }
   </style>
 </head>
 <body style="background: #02133E;">
@@ -54,7 +94,7 @@
           <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
           <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
         </div>
-        <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center gap-2">
+        <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           下載 PNG
         </button>
@@ -62,15 +102,17 @@
     </header>
 
     <main class="max-w-7xl mx-auto">
-      <div class="grid lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-1 space-y-5">
-          <div class="glass-card p-5">
+      <div class="grid lg:grid-cols-3 gap-6 main-grid">
+        <div class="lg:col-span-1 space-y-5 col-left">
+          <div class="glass-card p-5 card-upload">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
             <div id="uploadZone" class="upload-zone p-6 text-center">
               <input type="file" id="fileInput" accept="image/*" style="display: none;">
               <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊或拖放圖片</p>
+              <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊、拖放或貼上 (Ctrl+V) 圖片</p>
+              <p class="small-note mt-2">支援 PNG / JPG / WebP</p>
             </div>
+            <button id="resetBtn" class="btn-secondary w-full mt-3 py-2 rounded-lg text-xs" style="display: none;">清除圖片，重新開始</button>
             <div class="guide-box">
               <h3>📸 上傳指引</h3>
               <ul>
@@ -82,7 +124,7 @@
             </div>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-patterns">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/46)</h2>
             <div id="patternGrid" class="pattern-grid"></div>
             <div class="mt-3 flex gap-2">
@@ -92,7 +134,7 @@
             <p class="small-note mt-2">提示：不選「空白」時，結果會更像滿版禪繞畫。</p>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-settings">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">設定</h2>
             <div class="space-y-4">
               <div>
@@ -139,8 +181,8 @@
           </div>
         </div>
 
-        <div class="lg:col-span-2 space-y-5">
-          <div class="glass-card p-5">
+        <div class="lg:col-span-2 space-y-5 col-right">
+          <div id="previewCard" class="glass-card p-5 card-preview">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-base font-semibold" style="color: #00d4ff;">預覽</h2>
               <div class="flex gap-2">
@@ -148,7 +190,7 @@
                 <button class="tab-btn" data-view="regions">分區</button>
               </div>
             </div>
-            <div id="previewContainer" class="preview-wrapper relative" style="min-height: 350px;">
+            <div id="previewContainer" class="preview-wrapper relative">
               <div id="placeholderText" class="placeholder absolute inset-0 flex items-center justify-center">
                 <div>
                   <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -166,7 +208,7 @@
             </div>
           </div>
 
-          <div id="regionAssignView" class="glass-card p-5" style="display: none;">
+          <div id="regionAssignView" class="glass-card p-5 card-region" style="display: none;">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-base font-semibold" style="color: #00d4ff;">分區設定</h2>
               <button id="shuffleBtn" class="btn-secondary px-3 py-1 rounded text-xs">重新分區 / 隨機置換</button>
@@ -175,7 +217,7 @@
             <button id="applyAssignBtn" class="btn-primary w-full mt-3 py-2 rounded-lg text-sm">應用</button>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-original">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">原始圖片</h2>
             <div class="preview-wrapper">
               <canvas id="originalCanvas" style="display: none;"></canvas>
@@ -187,8 +229,25 @@
     </main>
 
     <footer class="max-w-7xl mx-auto mt-8 text-center">
-      <p class="footer-text">COPY RIGHT 2026 SKWSCOUT</p>
+      <p class="footer-text">© 2026 Scout System. All Rights Reserved.</p>
     </footer>
+  </div>
+
+  <div id="toastContainer" aria-live="polite"></div>
+
+  <div class="mobile-action-bar">
+    <button id="barGenerateBtn" class="btn-secondary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="重新生成">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      <span>生成</span>
+    </button>
+    <button id="barShareBtn" class="btn-secondary px-4 rounded-lg flex items-center justify-center gap-2" style="display: none;" aria-label="分享圖片">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 6.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
+      <span>分享</span>
+    </button>
+    <button id="barDownloadBtn" class="btn-primary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="下載 PNG">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      <span>下載 PNG</span>
+    </button>
   </div>
 
 <script>
@@ -253,8 +312,25 @@ class ZentangleGenerator {
     uz.onclick = () => fi.click();
     uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
     uz.ondragleave = () => uz.classList.remove('dragover');
-    uz.ondrop = e => { e.preventDefault(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
+    uz.ondrop = e => { e.preventDefault(); e.stopPropagation(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
     fi.onchange = e => { if (e.target.files[0]) this.load(e.target.files[0]); };
+
+    // 直接貼上截圖（Ctrl / Cmd + V）
+    document.addEventListener('paste', e => {
+      const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+      const imgItem = items.find(it => it.type && it.type.startsWith('image/'));
+      if (imgItem) { const f = imgItem.getAsFile(); if (f) this.load(f); }
+    });
+
+    // 全視窗拖放圖片即可匯入，並避免瀏覽器直接開啟圖片
+    ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+    window.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) this.load(f); });
+
+    this.el('resetBtn').onclick = () => this.reset();
+    this.el('barGenerateBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.generate(true); };
+    this.el('barDownloadBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.download(); };
+    this.el('barShareBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.sharePNG(); };
+    try { if (navigator.share && navigator.canShare) this.el('barShareBtn').style.display = 'flex'; } catch (err) {}
 
     this.el('densitySlider').oninput = e => { this.settings.density = +e.target.value; this.el('densityValue').textContent = e.target.value; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(); };
     this.el('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value / 10; this.el('strokeValue').textContent = this.settings.strokeWidth.toFixed(1) + 'px'; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(true); };
@@ -272,16 +348,9 @@ class ZentangleGenerator {
     this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
     this.el('applyAssignBtn').onclick = () => this.generate();
 
-    document.addEventListener('click', () => document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')));
+    document.addEventListener('click', () => { document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); document.body.classList.remove('picker-open'); });
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.onclick = e => {
-        document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        const view = e.currentTarget.dataset.view;
-        this.el('regionAssignView').style.display = view === 'regions' ? 'block' : 'none';
-        this.regionCanvas.style.display = view === 'regions' ? 'block' : 'none';
-        this.mainCanvas.style.display = view === 'regions' ? 'none' : 'block';
-      };
+      btn.onclick = e => this.switchView(e.currentTarget.dataset.view);
     });
   }
 
@@ -328,7 +397,10 @@ class ZentangleGenerator {
   }
 
   load(file) {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) { this.toast('請選擇圖片檔案（PNG / JPG / WebP）', false); return; }
     const reader = new FileReader();
+    reader.onerror = () => this.toast('圖片讀取失敗，請再試一次', false);
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
@@ -336,7 +408,9 @@ class ZentangleGenerator {
         this.partitionSalt = Math.random() * 10000;
         this.regionPatternAssign = [];
         let w = img.width, h = img.height;
-        const maxSide = 1200;
+        // 手機自動使用較低處理解析度保持流暢；桌機使用更高解析度，輸出更細緻
+        const smallDevice = Math.min(window.screen && window.screen.width || 1024, window.screen && window.screen.height || 768) < 520 || (navigator.hardwareConcurrency || 8) <= 4;
+        const maxSide = smallDevice ? 1000 : 1400;
         if (w > maxSide || h > maxSide) {
           const scale = maxSide / Math.max(w, h);
           w = Math.round(w * scale);
@@ -349,8 +423,11 @@ class ZentangleGenerator {
         this.originalCanvas.style.display = 'block';
         this.el('originalPlaceholder').style.display = 'none';
         this.el('generateBtn').disabled = false;
+        this.el('resetBtn').style.display = 'inline-flex';
         if (this.selectedPatterns.size === 0) this.selectAll(false); // 自動不包含「空白」，避免大片留白
         else this.generate(true);
+        // 手機：上傳後自動捲動到預覽，立刻看到結果
+        if (window.matchMedia('(max-width: 1023px)').matches) this.el('previewCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
       img.src = e.target.result;
     };
@@ -748,10 +825,10 @@ class ZentangleGenerator {
         opt.type = 'button';
         opt.className = 'picker-option hover:bg-white/20 p-1 cursor-pointer rounded transition-colors bg-white';
         opt.innerHTML = this.patterns[idx].isBlank ? '<div class="w-8 h-8 bg-white mx-auto"></div>' : `<img src="${this.patterns[idx].url}" class="w-8 h-8 object-contain mx-auto" alt="${this.patterns[idx].name}">`;
-        opt.onclick = e => { e.stopPropagation(); this.regionPatternAssign[i] = idx; this.updateRegionUI(); this.render(this.mainCanvas.width, this.mainCanvas.height); };
+        opt.onclick = e => { e.stopPropagation(); this.regionPatternAssign[i] = idx; document.body.classList.remove('picker-open'); this.updateRegionUI(); this.render(this.mainCanvas.width, this.mainCanvas.height); };
         picker.appendChild(opt);
       });
-      previewBtn.onclick = e => { e.stopPropagation(); const open = picker.classList.contains('active'); document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); if (!open) picker.classList.add('active'); };
+      previewBtn.onclick = e => { e.stopPropagation(); const open = picker.classList.contains('active'); document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); document.body.classList.remove('picker-open'); if (!open) { picker.classList.add('active'); document.body.classList.add('picker-open'); } };
       card.appendChild(previewBtn);
       card.appendChild(picker);
       grid.appendChild(card);
@@ -951,12 +1028,85 @@ class ZentangleGenerator {
     this.mainCtx.drawImage(result,0,0);
   }
 
-  download() {
+  switchView(view) {
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+    this.el('regionAssignView').style.display = view === 'regions' ? 'block' : 'none';
+    this.regionCanvas.style.display = view === 'regions' ? 'block' : 'none';
+    this.mainCanvas.style.display = view === 'regions' ? 'none' : 'block';
+  }
+
+  reset() {
+    if (!this.originalImage) { this.toast('目前沒有可清除的圖片', false); return; }
+    this.originalImage = null;
+    this.sourceData = null;
+    this.visibleMask = null;
+    this.fillMask = null;
+    this.lineMask = null;
+    this.regions = [];
+    this.regionPatternAssign = [];
+    this.partitionSalt = Math.random() * 10000;
+    this.patternCache.clear();
+    [this.mainCanvas, this.regionCanvas, this.originalCanvas].forEach(c => {
+      c.getContext('2d').clearRect(0, 0, c.width, c.height);
+      c.style.display = 'none';
+    });
+    this.el('placeholderText').style.display = 'flex';
+    this.el('originalPlaceholder').style.display = 'block';
+    this.el('generateBtn').disabled = true;
+    this.el('regionAssignView').style.display = 'none';
+    this.el('resetBtn').style.display = 'none';
+    this.switchView('final');
+    this.toast('已清除圖片，可重新上傳');
+  }
+
+  toPNGBlob() { return new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png')); }
+
+  async download() {
     if (!this.originalImage) return;
-    const link = document.createElement('a');
-    link.download = `zentangle-${Date.now()}.png`;
-    link.href = this.mainCanvas.toDataURL('image/png');
-    link.click();
+    try {
+      const blob = await this.toPNGBlob();
+      if (!blob) throw new Error('blob failed');
+      // Blob URL 在 iOS Safari 上比 data URL 更可靠
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `zentangle-${Date.now()}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast('PNG 已下載');
+    } catch (err) {
+      this.toast('下載失敗，請再試一次', false);
+    }
+  }
+
+  async sharePNG() {
+    if (!this.originalImage) return;
+    try {
+      const blob = await this.toPNGBlob();
+      if (!blob) throw new Error('blob failed');
+      const file = new File([blob], `zentangle-${Date.now()}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: '禪繞畫 Zentangle' });
+        this.toast('已開啟分享');
+      } else {
+        this.download();
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // 使用者取消分享
+      this.download();
+    }
+  }
+
+  toast(msg, ok = true) {
+    const wrap = this.el('toastContainer');
+    if (!wrap) return;
+    const t = document.createElement('div');
+    t.className = 'toast-item' + (ok ? '' : ' err');
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2200);
   }
 }
 
