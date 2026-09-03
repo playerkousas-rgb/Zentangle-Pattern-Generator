@@ -110,6 +110,19 @@
     @media (min-width: 480px) { .glossary { grid-template-columns: 1fr 1fr; } }
     .glossary div { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: rgba(255,255,255,.78); line-height: 1.55; }
     .glossary b { color: #7ee7ff; }
+
+    /* ===== 步驟教學 / 相簿 ===== */
+    .steps-row { display: none; gap: 10px; margin-top: 12px; }
+    .step-box { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px; text-align: center; }
+    .step-box img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 6px; transition: opacity .2s; }
+    .step-box span { display: block; font-size: 11px; color: rgba(255,255,255,.55); margin-top: 6px; }
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 6px; }
+    .gallery-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .gallery-card img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 6px; cursor: zoom-in; }
+    .gallery-meta { font-size: 10.5px; color: rgba(255,255,255,.5); }
+    .gallery-actions { display: flex; gap: 6px; }
+    .gallery-actions button { flex: 1; font-size: 11px; padding: 5px 0; border-radius: 6px; }
+    .count-chip { background: #00d4ff; color: #000; border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 700; margin-left: 4px; }
   </style>
 </head>
 <body style="background: #02133E;">
@@ -126,6 +139,9 @@
           </button>
           <button id="atlasBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="圖案圖鑑">
             📖<span class="hidden sm:inline text-sm">圖鑑</span>
+          </button>
+          <button id="galleryBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="作品集相簿">
+            🖼<span class="hidden sm:inline text-sm">相簿</span><span id="galleryCount" class="count-chip" style="display: none;">0</span>
           </button>
           <button id="printBtn" class="btn-secondary px-5 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
@@ -192,6 +208,13 @@
           <div class="glass-card p-5 card-settings">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">設定</h2>
             <div class="space-y-4">
+              <div>
+                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">分區風格</label>
+                <select id="regionShape" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                  <option value="organic" selected>有機分區（跟影像結構）</option>
+                  <option value="zendala">Zendala（圓形放射對稱）</option>
+                </select>
+              </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">分區數量</label><span id="regionValue" class="text-xs" style="color: #00d4ff;">8</span></div>
                 <input type="range" id="regionSlider" min="2" max="16" value="8">
@@ -354,6 +377,39 @@
       </div>
       <div id="atlasGrid" class="atlas-grid"></div>
       <p class="small-note" style="margin-top: 10px;">撳圖可以放大睇；撳左上角星星加減最愛。最愛咗嘅圖案可以用主介面嘅「⭐ 最愛」快速篩選。</p>
+      <button id="atlasStepsBtn" class="btn-secondary w-full mt-3 py-2 rounded-lg text-xs">▶️ 顯示步驟教學</button>
+      <div id="atlasSteps" class="steps-row">
+        <div class="step-box"><img id="stepImg1" alt="步驟 1"><span>步驟 1 · 骨架</span></div>
+        <div class="step-box"><img id="stepImg2" alt="步驟 2"><span>步驟 2 · 加細節</span></div>
+        <div class="step-box"><img id="stepImg3" alt="步驟 3"><span>步驟 3 · 完成</span></div>
+      </div>
+      <p class="small-note" style="margin-top: 8px;">步驟教學係根據圖案筆畫順序自動分段：先學骨架，再加細節，最後完成。跟住次序畫就最似。</p>
+    </div>
+  </div>
+
+  <div id="galleryModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="modal-title">🖼 作品集相簿</h3>
+        <div class="flex gap-2 items-center">
+          <button id="gallerySaveBtn" class="btn-primary px-3 py-2 rounded-lg text-xs">💾 儲存目前作品</button>
+          <button class="modal-x" data-close>✕</button>
+        </div>
+      </div>
+      <div id="galleryGrid" class="gallery-grid"></div>
+      <p id="galleryEmpty" class="small-note" style="display: none;"></p>
+      <p class="small-note" style="margin-top: 10px;">作品只會儲存喺你部機入面（瀏覽器 IndexedDB），唔會上傳到任何伺服器。</p>
+    </div>
+  </div>
+
+  <div id="lightbox" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-head"><h3 class="modal-title" id="lbTitle">作品</h3><button class="modal-x" data-close>✕</button></div>
+      <img id="lbImg" alt="作品放大圖" style="width: 100%; border-radius: 10px; background: #fff;">
+      <div class="flex gap-2 mt-3">
+        <button id="lbDownload" class="btn-primary flex-1 py-2 rounded-lg text-sm">下載 PNG</button>
+        <button id="lbDelete" class="btn-secondary px-4 py-2 rounded-lg text-sm">刪除</button>
+      </div>
     </div>
   </div>
 
@@ -362,13 +418,14 @@
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
       <span>生成</span>
     </button>
-    <button id="barShareBtn" class="btn-secondary px-4 rounded-lg flex items-center justify-center gap-2" style="display: none;" aria-label="分享圖片">
+    <button id="barShareBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" style="display: none;" aria-label="分享圖片">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 6.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
-      <span>分享</span>
     </button>
-    <button id="barPrintBtn" class="btn-secondary px-4 rounded-lg flex items-center justify-center gap-2" aria-label="列印作品">
+    <button id="barSaveBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="儲存到相簿" title="儲存到相簿">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    </button>
+    <button id="barPrintBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="列印作品">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
-      <span>列印</span>
     </button>
     <button id="barDownloadBtn" class="btn-primary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="下載 PNG">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -399,6 +456,8 @@ class ZentangleGenerator {
     this.favorites = this.loadFavs();
     this._favFilter = false;
     this._atlasCur = 1;
+    this._lbUrl = null;
+    this._stepUrls = new Map();
     this.regionLabelMap = null;
     this.regionAdj = [];
     this.regionSizes = null;
@@ -414,7 +473,8 @@ class ZentangleGenerator {
       featureStrength: 'medium',
       bgOption: 'white',
       stringLines: true,
-      practiceMode: false
+      practiceMode: false,
+      regionShape: 'organic'
     };
 
     this.patterns = [
@@ -491,6 +551,19 @@ class ZentangleGenerator {
     this.el('guideBtn').onclick = () => this.openModal('guideModal');
     this.el('atlasBtn').onclick = () => this.openAtlas();
     this.el('atlasFavBtn').onclick = () => { if (this._atlasCur) this.toggleFav(this._atlasCur); };
+    this.el('galleryBtn').onclick = () => this.openGallery();
+    this.el('gallerySaveBtn').onclick = () => this.saveToGallery();
+    this.el('barSaveBtn').onclick = () => this.saveToGallery();
+    this.el('lbDownload').onclick = () => this.downloadBlob(this._lbItem && this._lbItem.blob);
+    this.el('lbDelete').onclick = () => this.deleteFromGallery(this._lbItem && this._lbItem.id);
+    this.el('atlasStepsBtn').onclick = () => {
+      const row = this.el('atlasSteps');
+      const open = row.style.display !== 'none';
+      row.style.display = open ? 'none' : 'flex';
+      this.el('atlasStepsBtn').textContent = open ? '▶️ 顯示步驟教學' : '▲ 收起步驟教學';
+      if (!open) this.loadSteps(this._atlasCur);
+    };
+    this.el('regionShape').onchange = e => { this.settings.regionShape = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('atlasPrevBtn').onclick = () => this.atlasStep(-1);
     this.el('atlasNextBtn').onclick = () => this.atlasStep(1);
     this.el('randomPickBtn').onclick = () => this.randomPick();
@@ -631,9 +704,9 @@ class ZentangleGenerator {
       this.el('processingText').textContent = '提取內部特徵線...';
       await this.sleep(10);
       this.lineMask = this.extractLineMask(w, h);
-      this.el('processingText').textContent = '建立高質分區...';
+      this.el('processingText').textContent = this.settings.regionShape === 'zendala' ? '建立 Zendala 放射分區...' : '建立高質分區...';
       await this.sleep(10);
-      this.regions = this.segment(w, h);
+      this.regions = this.settings.regionShape === 'zendala' ? this.segmentZendala(w, h) : this.segment(w, h);
       this.assignPatterns(randomizeAssign);
       this.drawRegionPreview(w, h);
     }
@@ -1492,7 +1565,10 @@ class ZentangleGenerator {
 
   // ===== 彈窗 =====
   openModal(id) { this.el(id).classList.add('active'); }
-  closeModal(id) { this.el(id).classList.remove('active'); }
+  closeModal(id) {
+    this.el(id).classList.remove('active');
+    if (id === 'lightbox' && this._lbUrl) { URL.revokeObjectURL(this._lbUrl); this._lbUrl = null; }
+  }
 
   // ===== 最愛 =====
   loadFavs() { try { return new Set(JSON.parse(localStorage.getItem('zt-favs') || '[]')); } catch (e) { return new Set(); } }
@@ -1576,6 +1652,8 @@ class ZentangleGenerator {
     fb.textContent = fav ? '★ 已係最愛' : '⭐ 最愛';
     fb.classList.toggle('fav-btn-active', fav);
     document.querySelectorAll('.atlas-item').forEach(el => el.classList.toggle('current', +el.dataset.i === i));
+    const stepsRow = this.el('atlasSteps');
+    if (stepsRow && stepsRow.style.display !== 'none') this.loadSteps(i);
   }
 
   atlasStep(d) {
@@ -1626,6 +1704,268 @@ class ZentangleGenerator {
       }
     }
     return line;
+  }
+
+  // ===== Zendala 放射分區 =====
+  finalizeRegions(regionList, w, h) {
+    const kept = [];
+    for (const r of regionList) {
+      let c = 0;
+      for (let i = 0; i < r.mask.length; i++) if (r.mask[i]) c++;
+      if (c > 0) kept.push(r);
+    }
+    const label2 = new Uint8Array(w * h);
+    const sizes = new Array(kept.length).fill(0);
+    for (let r = 0; r < kept.length; r++) {
+      const m = kept[r].mask;
+      let c = 0;
+      for (let i = 0; i < w * h; i++) if (m[i]) { label2[i] = r + 1; c++; }
+      sizes[r] = c;
+    }
+    const adjSet = Array.from({ length: kept.length }, () => new Set());
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const id = row + x;
+        const a = label2[id];
+        if (!a) continue;
+        if (x < w-1) { const b = label2[id+1]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+        if (y < h-1) { const b = label2[id+w]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+      }
+    }
+    this.regionLabelMap = label2;
+    this.regionAdj = adjSet.map(st => Array.from(st));
+    this.regionSizes = sizes;
+    return kept;
+  }
+
+  segmentZendala(w, h) {
+    const mask = this.fillMask;
+    const pixels = [];
+    let cx = 0, cy = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (mask[y*w+x]) { pixels.push(y*w+x); cx += x; cy += y; }
+    if (!pixels.length) { this.regionLabelMap = null; this.regionAdj = []; this.regionSizes = null; return []; }
+    cx /= pixels.length; cy /= pixels.length;
+    const ds = pixels.map(id => { const x = id % w, y = (id - x) / w; return Math.hypot(x - cx, y - cy); }).sort((a, b) => a - b);
+    const R = ds[Math.floor(ds.length * 0.96)] || 1;
+    // 放射對稱：楔形數量跟「分區數量」滑桿自動配 6/8/10/12
+    const rc = this.settings.regionCount;
+    const wedges = rc <= 6 ? 6 : rc <= 10 ? 8 : rc <= 13 ? 10 : 12;
+    const s1 = this.seededRand(11) * 6.28, s2 = this.seededRand(23) * 6.28, s3 = this.seededRand(37) * 6.28;
+    const t1 = R * 0.38, t2 = R * 0.70;
+    const n = wedges * 2 + 1;
+    const regionList = Array.from({ length: n }, () => ({ mask: new Uint8Array(w * h) }));
+    for (const id of pixels) {
+      const x = id % w, y = (id - x) / w;
+      const dx = x - cx, dy = y - cy;
+      const r = Math.hypot(dx, dy);
+      const th = Math.atan2(dy, dx);
+      // 手繪感：半徑同行角度都有輕微 wobble，唔會太機械
+      const wob = 1 + 0.05 * Math.sin(3 * th + s1) + 0.03 * Math.sin(5 * th + s2);
+      const rw = r * wob;
+      const ring = rw < t1 ? 0 : rw < t2 ? 1 : 2;
+      let a = (th + Math.PI + 0.03 * Math.sin(4 * th + s3)) / (2 * Math.PI);
+      a = ((a % 1) + 1) % 1;
+      const widx = Math.min(wedges - 1, Math.floor(a * wedges));
+      const ri = ring === 0 ? 0 : ring === 1 ? 1 + widx : 1 + wedges + widx;
+      regionList[ri].mask[id] = 255;
+    }
+    return this.finalizeRegions(regionList, w, h);
+  }
+
+  // ===== 步驟教學（自動由 SVG 筆畫順序分段）=====
+  // 每個圖案 SVG 係一條大 path，入面每筆係一個 M/m 子路徑；
+  // 按子路徑順序保留頭 35% / 65% / 100% 就係「骨架 → 加細節 → 完成」。
+  async buildStepOuts(i) {
+    const p = this.patterns[i];
+    if (!p || p.isBlank) return null;
+    if (this._stepUrls.has(i)) return this._stepUrls.get(i);
+    const res = await fetch(p.url);
+    if (!res.ok) throw new Error('svg load failed');
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const svg = doc.documentElement;
+    const paths = Array.from(svg.querySelectorAll('path')).filter(pt => (pt.getAttribute('d') || '').length > 10);
+    const mk = frac => {
+      const c = svg.cloneNode(true);
+      const cPaths = Array.from(c.querySelectorAll('path'));
+      paths.forEach((pt, k) => {
+        const d = pt.getAttribute('d') || '';
+        const subs = d.match(/[Mm][^Mm]*/g) || [];
+        if (subs.length > 1 && cPaths[k]) {
+          const keep = subs.slice(0, Math.max(1, Math.round(subs.length * frac)));
+          cPaths[k].setAttribute('d', keep.join(' '));
+        }
+      });
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(new XMLSerializer().serializeToString(c));
+    };
+    const out = [mk(0.35), mk(0.65), mk(1)];
+    this._stepUrls.set(i, out);
+    return out;
+  }
+
+  async loadSteps(i) {
+    const p = this.patterns[i];
+    const imgs = [this.el('stepImg1'), this.el('stepImg2'), this.el('stepImg3')];
+    if (!p || p.isBlank) { imgs.forEach(im => { im.src = '/patterns/blank.svg'; im.style.opacity = '1'; }); return; }
+    imgs.forEach(im => { im.style.opacity = '.3'; });
+    try {
+      const urls = await this.buildStepOuts(i);
+      if (this._atlasCur !== i) return; // 已轉咗另一款
+      imgs.forEach((im, k) => { im.src = urls[k]; im.style.opacity = '1'; });
+    } catch (e) {
+      imgs.forEach(im => { im.style.opacity = '1'; });
+    }
+  }
+
+  // ===== 作品集相簿（IndexedDB 本地儲存）=====
+  openGalleryDB() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error('no idb'));
+      const req = indexedDB.open('zt-gallery', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('works', { keyPath: 'id' }); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  idbAll(db) { return new Promise((res, rej) => { const r = db.transaction('works', 'readonly').objectStore('works').getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); }); }
+  idbPut(db, item) { return new Promise((res, rej) => { const tx = db.transaction('works', 'readwrite'); tx.objectStore('works').put(item); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+  idbDel(db, id) { return new Promise((res, rej) => { const tx = db.transaction('works', 'readwrite'); tx.objectStore('works').delete(id); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+
+  async openGallery() {
+    this.openModal('galleryModal');
+    this.renderGallery();
+  }
+
+  async renderGallery() {
+    const grid = this.el('galleryGrid');
+    const empty = this.el('galleryEmpty');
+    grid.innerHTML = '';
+    let items = [];
+    try {
+      const db = await this.openGalleryDB();
+      items = await this.idbAll(db);
+      db.close();
+    } catch (e) {
+      empty.style.display = 'block';
+      empty.textContent = '相簿需要瀏覽器 IndexedDB 支援，而家開唔到（可能係私密瀏覽模式）。';
+      return;
+    }
+    items.sort((a, b) => b.id - a.id);
+    empty.style.display = items.length ? 'none' : 'block';
+    empty.textContent = '仲未有作品。生成之後撳「💾 儲存」加入相簿。';
+    items.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'gallery-card';
+      const d = new Date(it.id);
+      const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+      card.innerHTML = `<img alt="作品縮圖"><div class="gallery-meta">${d.toLocaleDateString('zh-TW')} ${hh}:${mm} · ${it.w}×${it.h}</div><div class="gallery-actions"><button class="btn-secondary" data-a="dl">下載</button><button class="btn-secondary" data-a="del">刪除</button></div>`;
+      card.querySelector('img').src = it.thumb;
+      card.querySelector('img').onclick = () => this.showLightbox(it);
+      const btns = card.querySelectorAll('button');
+      btns[0].onclick = () => this.downloadBlob(it.blob);
+      btns[1].onclick = async () => {
+        const del = btns[1];
+        if (del.dataset.c !== '1') { del.dataset.c = '1'; del.textContent = '確認?'; setTimeout(() => { del.dataset.c = ''; del.textContent = '刪除'; }, 2400); return; }
+        try {
+          const db = await this.openGalleryDB();
+          await this.idbDel(db, it.id);
+          db.close();
+          this.renderGallery();
+          this.updateGalleryBadge();
+          this.toast('已刪除');
+        } catch (e) { this.toast('刪除失敗', false); }
+      };
+      grid.appendChild(card);
+    });
+  }
+
+  makeThumbDataUrl(size) {
+    const s = Math.min(1, size / Math.max(this.mainCanvas.width, this.mainCanvas.height));
+    const c = this.makeCanvas(Math.max(1, Math.round(this.mainCanvas.width * s)), Math.max(1, Math.round(this.mainCanvas.height * s)));
+    const cctx = c.getContext('2d');
+    cctx.fillStyle = '#fff';
+    cctx.fillRect(0, 0, c.width, c.height);
+    cctx.drawImage(this.mainCanvas, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  }
+
+  async saveToGallery() {
+    if (!this.originalImage) { this.toast('請先上傳並生成作品', false); return; }
+    try {
+      const blob = await this.toPNGBlob();
+      const item = { id: Date.now(), blob, thumb: this.makeThumbDataUrl(300), w: this.mainCanvas.width, h: this.mainCanvas.height };
+      const db = await this.openGalleryDB();
+      await this.idbPut(db, item);
+      db.close();
+      this.updateGalleryBadge();
+      this.toast('已儲存到相簿 ✅');
+    } catch (e) {
+      this.toast('儲存失敗（瀏覽器空間或私隱模式限制）', false);
+    }
+  }
+
+  async updateGalleryBadge() {
+    try {
+      const db = await this.openGalleryDB();
+      const items = await this.idbAll(db);
+      db.close();
+      const chip = this.el('galleryCount');
+      chip.textContent = items.length;
+      chip.style.display = items.length ? 'inline-block' : 'none';
+    } catch (e) {}
+  }
+
+  showLightbox(item) {
+    if (!item) return;
+    this._lbItem = item;
+    if (this._lbUrl) URL.revokeObjectURL(this._lbUrl);
+    this._lbUrl = URL.createObjectURL(item.blob);
+    this.el('lbImg').src = this._lbUrl;
+    const d = new Date(item.id);
+    this.el('lbTitle').textContent = `${d.toLocaleDateString('zh-TW')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const del = this.el('lbDelete');
+    del.dataset.confirm = '';
+    del.textContent = '刪除';
+    del.classList.remove('fav-btn-active');
+    this.openModal('lightbox');
+  }
+
+  async deleteFromGallery(id) {
+    if (!id) return;
+    const btn = this.el('lbDelete');
+    if (btn.dataset.confirm !== '1') {
+      btn.dataset.confirm = '1';
+      btn.textContent = '確認刪除？';
+      btn.classList.add('fav-btn-active');
+      setTimeout(() => { btn.dataset.confirm = ''; btn.textContent = '刪除'; btn.classList.remove('fav-btn-active'); }, 2600);
+      return;
+    }
+    btn.dataset.confirm = '';
+    btn.textContent = '刪除';
+    btn.classList.remove('fav-btn-active');
+    try {
+      const db = await this.openGalleryDB();
+      await this.idbDel(db, id);
+      db.close();
+      this.closeModal('lightbox');
+      this.renderGallery();
+      this.updateGalleryBadge();
+      this.toast('已刪除');
+    } catch (e) { this.toast('刪除失敗', false); }
+  }
+
+  downloadBlob(blob, name) {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = name || `zentangle-${Date.now()}.png`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   toast(msg, ok = true) {
