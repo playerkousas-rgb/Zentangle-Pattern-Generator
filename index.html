@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>禪繞畫工具 - Zentangle Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -10,17 +10,18 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans TC', system-ui, sans-serif; background: #02133E; color: #fff; min-height: 100vh; }
-    .glass-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
+    .glass-card { background: rgba(255, 255, 255, 0.05); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; }
     .btn-primary { background: linear-gradient(135deg, #00d4ff 0%, #7b61ff 100%); color: #000; font-weight: 700; cursor: pointer; transition: all 0.3s ease; }
     .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-secondary { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer; transition: all 0.3s ease; color: #fff; }
     .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-    input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
+    input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.2); touch-action: pan-y; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #00d4ff; cursor: pointer; box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
+    input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: none; border-radius: 50%; background: #00d4ff; cursor: pointer; }
     .preview-wrapper { background: #fff; border-radius: 12px; overflow: hidden; }
     .preview-wrapper canvas { display: block; width: 100%; height: auto; }
-    .pattern-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; }
+    .pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     .pattern-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; cursor: pointer; overflow: hidden; position: relative; transition: transform .18s ease, border-color .18s ease; }
     .pattern-item:hover { transform: scale(1.05); }
     .pattern-item.selected { border-color: #00d4ff; box-shadow: 0 0 0 2px rgba(0,212,255,.25); }
@@ -44,6 +45,84 @@
     .guide-box ul { color: rgba(255, 255, 255, 0.72); font-size: 11px; padding-left: 16px; }
     .guide-box li { margin-bottom: 3px; }
     .small-note { color: rgba(255,255,255,.45); font-size: 11px; line-height: 1.45; }
+    #previewContainer { min-height: 350px; }
+
+    /* ===== 手機友善 / Mobile friendly ===== */
+    html { -webkit-text-size-adjust: 100%; }
+    body { -webkit-tap-highlight-color: transparent; }
+    body, button, select, label { touch-action: manipulation; }
+    .mobile-action-bar { display: none; }
+    #toastContainer { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(100px + env(safe-area-inset-bottom, 0px)); z-index: 300; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: 92vw; }
+    .toast-item { background: rgba(8, 28, 68, .96); border: 1px solid rgba(0, 212, 255, .45); color: #fff; font-size: 13px; padding: 10px 18px; border-radius: 999px; box-shadow: 0 12px 32px rgba(0, 0, 0, .4); animation: toastIn .25s ease; max-width: 100%; text-align: center; }
+    .toast-item.err { border-color: rgba(255, 107, 107, .65); }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 手機 / 平板：預覽移到上傳之後，並加上底部固定工具列 */
+    @media (max-width: 1023px) {
+      body { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+      .main-grid { display: flex; flex-direction: column; }
+      .col-left, .col-right { display: contents; }
+      .main-grid .col-left > * + *, .main-grid .col-right > * + * { margin-top: 0 !important; }
+      .card-upload { order: 1; }
+      .card-preview { order: 2; }
+      .card-patterns { order: 3; }
+      .card-settings { order: 4; }
+      .card-region { order: 5; }
+      .card-original { order: 6; }
+      .mobile-action-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 120; gap: 10px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background: rgba(2, 19, 62, .94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255, 255, 255, .14); }
+      .mobile-action-bar .btn-primary, .mobile-action-bar .btn-secondary { min-height: 46px; }
+    }
+
+    @media (max-width: 640px) {
+      select { font-size: 16px !important; } /* 避免 iOS 聚焦時放大頁面 */
+      input[type="checkbox"] { width: 20px; height: 20px; }
+      .pattern-grid { max-height: 300px; }
+      #previewContainer { min-height: 260px; }
+      .placeholder { padding: 44px 16px; }
+      /* 圖案選擇彈窗改為置中彈出，不會被畫面邊緣裁掉 */
+      .pattern-picker-popup { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(330px, 88vw); max-height: 48vh; grid-template-columns: repeat(5, 1fr); z-index: 220; }
+      .pattern-picker-popup .picker-option img, .pattern-picker-popup .picker-option > div { width: 46px; height: 46px; }
+      body.picker-open::before { content: ''; position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 210; }
+    }
+
+    /* ===== 彈窗 / 圖鑑 / 列印選單 ===== */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .62); z-index: 240; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.active { display: flex; }
+    .modal-card { background: #04193f; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(0, 212, 255, .35); border-radius: 16px; width: 100%; max-width: 660px; max-height: 88vh; overflow: auto; padding: 20px; }
+    @media (max-width: 640px) { .modal-backdrop { padding: 0; align-items: flex-end; } .modal-card { max-width: 100%; max-height: 94vh; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); } }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; position: sticky; top: 0; background: #04193f; padding: 2px 0 8px; z-index: 2; }
+    .modal-title { color: #00d4ff; font-weight: 700; font-size: 16px; margin: 0; }
+    .modal-x { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 16px; cursor: pointer; flex: none; }
+    .modal-menu-btn { display: flex; width: 100%; text-align: left; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #fff; cursor: pointer; margin-bottom: 8px; font-size: 14px; }
+    .modal-menu-btn:hover { background: rgba(255,255,255,.14); }
+    .fav-star { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: rgba(2,19,62,.55); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 1; color: rgba(255,255,255,.4); z-index: 2; cursor: pointer; padding: 0; }
+    .fav-star.on { color: #ffd166; }
+    #patternGrid.fav-filter .pattern-item:not(.favorite) { display: none; }
+    .fav-btn-active { background: #00d4ff !important; color: #000 !important; font-weight: 700; }
+    .atlas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; margin-top: 14px; }
+    .atlas-item { aspect-ratio: 1; background: #fff; border: 2px solid transparent; border-radius: 6px; overflow: hidden; position: relative; cursor: pointer; }
+    .atlas-item.current { border-color: #00d4ff; box-shadow: 0 0 0 2px rgba(0,212,255,.3); }
+    .atlas-item img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+    .guide-h4 { color: #00d4ff; font-size: 14px; margin: 16px 0 6px; font-weight: 600; }
+    .guide-p { color: rgba(255,255,255,.78); font-size: 13.5px; line-height: 1.7; margin: 0 0 8px; }
+    .guide-li { color: rgba(255,255,255,.78); font-size: 13px; line-height: 1.8; }
+    .glossary { display: grid; grid-template-columns: 1fr; gap: 6px; }
+    @media (min-width: 480px) { .glossary { grid-template-columns: 1fr 1fr; } }
+    .glossary div { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: rgba(255,255,255,.78); line-height: 1.55; }
+    .glossary b { color: #7ee7ff; }
+
+    /* ===== 步驟教學 / 相簿 ===== */
+    .steps-row { display: none; gap: 10px; margin-top: 12px; }
+    .step-box { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px; text-align: center; }
+    .step-box img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 6px; transition: opacity .2s; }
+    .step-box span { display: block; font-size: 11px; color: rgba(255,255,255,.55); margin-top: 6px; }
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 6px; }
+    .gallery-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .gallery-card img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 6px; cursor: zoom-in; }
+    .gallery-meta { font-size: 10.5px; color: rgba(255,255,255,.5); }
+    .gallery-actions { display: flex; gap: 6px; }
+    .gallery-actions button { flex: 1; font-size: 11px; padding: 5px 0; border-radius: 6px; }
+    .count-chip { background: #00d4ff; color: #000; border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 700; margin-left: 4px; }
   </style>
 </head>
 <body style="background: #02133E;">
@@ -54,7 +133,21 @@
           <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
           <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
         </div>
-        <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg flex items-center gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <button id="guideBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="新手指南">
+            ❓<span class="hidden sm:inline text-sm">新手指南</span>
+          </button>
+          <button id="atlasBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="圖案圖鑑">
+            📖<span class="hidden sm:inline text-sm">圖鑑</span>
+          </button>
+          <button id="galleryBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="作品集相簿">
+            🖼<span class="hidden sm:inline text-sm">相簿</span><span id="galleryCount" class="count-chip" style="display: none;">0</span>
+          </button>
+          <button id="printBtn" class="btn-secondary px-5 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+            列印
+          </button>
+          <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           下載 PNG
         </button>
@@ -62,19 +155,33 @@
     </header>
 
     <main class="max-w-7xl mx-auto">
-      <div class="grid lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-1 space-y-5">
-          <div class="glass-card p-5">
+      <div class="grid lg:grid-cols-3 gap-6 main-grid">
+        <div class="lg:col-span-1 space-y-5 col-left">
+          <div class="glass-card p-5 card-upload">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
             <div id="uploadZone" class="upload-zone p-6 text-center">
               <input type="file" id="fileInput" accept="image/*" style="display: none;">
+              <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
               <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-              <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊或拖放圖片</p>
+              <p style="color: rgba(255,255,255,0.6); font-size: 14px;">點擊、拖放或貼上 (Ctrl+V) 圖片</p>
+              <p class="small-note mt-2">支援 PNG / JPG / WebP</p>
             </div>
+            <div class="flex gap-2 mt-3">
+              <button id="cameraBtn" class="btn-primary flex-1 py-3 rounded-lg flex items-center justify-center gap-2 text-sm" aria-label="開啟相機拍照">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>影相 / 拍照</span>
+              </button>
+              <button id="galleryBtn" class="btn-secondary flex-1 py-3 rounded-lg flex items-center justify-center gap-2 text-sm" aria-label="從相簿選圖">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>相簿選圖</span>
+              </button>
+            </div>
+            <button id="resetBtn" class="btn-secondary w-full mt-3 py-2 rounded-lg text-xs" style="display: none;">清除圖片，重新開始</button>
             <div class="guide-box">
               <h3>📸 上傳指引</h3>
               <ul>
                 <li>透明 PNG / 白底插畫效果最好</li>
+                <li>📱 影相貼士：光線充足、主體填滿畫面、避免陰影和反光</li>
                 <li>會自動保留眼睛、表情等內部特徵線</li>
                 <li>圖案會轉成黑色線條，不再出現灰底</li>
                 <li>如背景複雜，可提高「背景容差」後重新生成</li>
@@ -82,19 +189,32 @@
             </div>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-patterns">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/46)</h2>
             <div id="patternGrid" class="pattern-grid"></div>
-            <div class="mt-3 flex gap-2">
+            <div class="mt-3 flex gap-2 flex-wrap">
               <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
               <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
+              <button id="randomPickBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs" title="隨機揀 6 款">🎲 隨機</button>
+              <button id="favFilterBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs" title="只顯示最愛">⭐ 最愛</button>
             </div>
+            <button id="printSheetBtn" class="btn-secondary w-full mt-2 py-2 rounded-lg text-xs flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+              列印圖案參考表（45 款）
+            </button>
             <p class="small-note mt-2">提示：不選「空白」時，結果會更像滿版禪繞畫。</p>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-settings">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">設定</h2>
             <div class="space-y-4">
+              <div>
+                <label class="text-xs block mb-1" style="color: rgba(255,255,255,0.6);">分區風格</label>
+                <select id="regionShape" class="w-full p-2 rounded text-xs" style="background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                  <option value="organic" selected>有機分區（跟影像結構）</option>
+                  <option value="zendala">Zendala（圓形放射對稱）</option>
+                </select>
+              </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">分區數量</label><span id="regionValue" class="text-xs" style="color: #00d4ff;">8</span></div>
                 <input type="range" id="regionSlider" min="2" max="16" value="8">
@@ -114,6 +234,14 @@
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="addShading" checked class="w-4 h-4">
                 <label for="addShading" class="text-xs" style="color: rgba(255,255,255,0.6);">柔和陰影 / 分區深淺</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="stringLines" checked class="w-4 h-4">
+                <label for="stringLines" class="text-xs" style="color: rgba(255,255,255,0.6);">分區串線（區與區之間嘅墨線）</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="practiceMode" class="w-4 h-4">
+                <label for="practiceMode" class="text-xs" style="color: rgba(255,255,255,0.6);">練習稿模式（只畫淺灰串線，自己手填圖案）</label>
               </div>
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="showOutline" checked class="w-4 h-4">
@@ -139,8 +267,8 @@
           </div>
         </div>
 
-        <div class="lg:col-span-2 space-y-5">
-          <div class="glass-card p-5">
+        <div class="lg:col-span-2 space-y-5 col-right">
+          <div id="previewCard" class="glass-card p-5 card-preview">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-base font-semibold" style="color: #00d4ff;">預覽</h2>
               <div class="flex gap-2">
@@ -148,7 +276,7 @@
                 <button class="tab-btn" data-view="regions">分區</button>
               </div>
             </div>
-            <div id="previewContainer" class="preview-wrapper relative" style="min-height: 350px;">
+            <div id="previewContainer" class="preview-wrapper relative">
               <div id="placeholderText" class="placeholder absolute inset-0 flex items-center justify-center">
                 <div>
                   <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -166,7 +294,7 @@
             </div>
           </div>
 
-          <div id="regionAssignView" class="glass-card p-5" style="display: none;">
+          <div id="regionAssignView" class="glass-card p-5 card-region" style="display: none;">
             <div class="flex items-center justify-between mb-3">
               <h2 class="text-base font-semibold" style="color: #00d4ff;">分區設定</h2>
               <button id="shuffleBtn" class="btn-secondary px-3 py-1 rounded text-xs">重新分區 / 隨機置換</button>
@@ -175,7 +303,7 @@
             <button id="applyAssignBtn" class="btn-primary w-full mt-3 py-2 rounded-lg text-sm">應用</button>
           </div>
 
-          <div class="glass-card p-5">
+          <div class="glass-card p-5 card-original">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">原始圖片</h2>
             <div class="preview-wrapper">
               <canvas id="originalCanvas" style="display: none;"></canvas>
@@ -187,8 +315,122 @@
     </main>
 
     <footer class="max-w-7xl mx-auto mt-8 text-center">
-      <p class="footer-text">COPY RIGHT 2026 SKWSCOUT</p>
+      <p class="footer-text">© 2026 Scout System. All Rights Reserved.</p>
     </footer>
+  </div>
+
+  <div id="toastContainer" aria-live="polite"></div>
+
+  <div id="printMenu" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-head"><h3 class="modal-title">🖨️ 列印</h3><button class="modal-x" data-close>✕</button></div>
+      <button class="modal-menu-btn" data-print="artwork">🎨 <span><b>作品</b> — A4 全頁，直接填色</span></button>
+      <button class="modal-menu-btn" data-print="sheet">📋 <span><b>圖案參考表</b> — 45 款一頁</span></button>
+      <button class="modal-menu-btn" data-print="square">⬜ <span><b>空白方磚</b> — 經典 89mm ×6</span></button>
+      <button class="modal-menu-btn" data-print="zendala">⚪ <span><b>空白 Zendala 圓磚</b> — ⌀89mm ×6</span></button>
+      <button class="modal-menu-btn" data-print="bijou">▪️ <span><b>空白 Bijou 小磚</b> — 51mm ×12</span></button>
+    </div>
+  </div>
+
+  <div id="guideModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head"><h3 class="modal-title">❓ 禪繞畫新手指南</h3><button class="modal-x" data-close>✕</button></div>
+      <h4 class="guide-h4">咩係禪繞畫？</h4>
+      <p class="guide-p">禪繞畫（Zentangle®）由 Rick Roberts 同 Maria Thomas 創立：用最簡單嘅點、線、面，一筆一筆畫出結構化圖案。過程專注、放鬆，而且<b style="color:#7ee7ff">冇嘢係「錯」</b>——官方文化甚至唔用橡皮擦，所有意外筆觸都可以變成圖案嘅一部分。</p>
+      <h4 class="guide-h4">傳統五步（本工具已代你做咗一半）</h4>
+      <div class="glossary">
+        <div><b>1. 感恩放鬆</b> — 深呼吸，當作冥想時間</div>
+        <div><b>2. 點四角</b> — 喺紙上點四個角 + 畫邊框</div>
+        <div><b>3. 畫串線 String</b> — 隨手畫幾條線將畫面分格（= 本工具嘅「分區」）</div>
+        <div><b>4. 填圖案 Tangle</b> — 每一格填一種重複圖案（= 本工具自動幫你填）</div>
+        <div><b>5. 陰影 + 簽名</b> — 鉛筆加陰影，簽名欣賞</div>
+      </div>
+      <h4 class="guide-h4">名詞小字典</h4>
+      <div class="glossary">
+        <div><b>畫磚 Tile</b> — 官方標準 89mm 正方形畫紙</div>
+        <div><b>串線 String</b> — 分格線，通常鉛筆畫、好淡</div>
+        <div><b>圖案 Tangle</b> — 重複結構嘅花紋，全世界有過千款</div>
+        <div><b>Zendala</b> — 圓形畫磚，曼陀羅風格</div>
+        <div><b>Bijou</b> — 51mm 細畫磚</div>
+        <div><b>Monotangle</b> — 成幅只用一種圖案嘅作品</div>
+      </div>
+      <h4 class="guide-h4">用本工具嘅兩種玩法</h4>
+      <p class="guide-p">🎨 <b>自動生成</b>：上傳/影相 → 自動分區同填圖案 → 列印做填色稿或作品</p>
+      <p class="guide-p">✍️ <b>手動練習</b>：開「練習稿模式」印返淨係得淺灰串線嘅稿，自己照住「圖案參考表」一格一格填——呢個先係最原汁原味嘅禪繞體驗</p>
+    </div>
+  </div>
+
+  <div id="atlasModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head"><h3 class="modal-title">📖 圖案圖鑑（45 款）</h3><button class="modal-x" data-close>✕</button></div>
+      <div class="flex gap-3 items-center flex-wrap" style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 12px;">
+        <img id="atlasMainImg" src="/patterns/1.svg" alt="" style="width: 132px; height: 132px; background: #fff; border-radius: 10px; object-fit: contain; padding: 6px; flex: none;">
+        <div style="min-width: 150px; flex: 1;">
+          <p id="atlasMainName" style="color: #fff; font-weight: 700; font-size: 16px; margin: 0 0 4px;">圖案 1</p>
+          <p id="atlasPos" style="color: rgba(255,255,255,.45); font-size: 12px; margin: 0 0 10px;">1 / 45</p>
+          <div class="flex gap-2 flex-wrap">
+            <button id="atlasPrevBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">← 上一款</button>
+            <button id="atlasNextBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">下一款 →</button>
+            <button id="atlasFavBtn" class="btn-secondary px-3 py-2 rounded-lg text-xs">⭐ 最愛</button>
+          </div>
+        </div>
+      </div>
+      <div id="atlasGrid" class="atlas-grid"></div>
+      <p class="small-note" style="margin-top: 10px;">撳圖可以放大睇；撳左上角星星加減最愛。最愛咗嘅圖案可以用主介面嘅「⭐ 最愛」快速篩選。</p>
+      <button id="atlasStepsBtn" class="btn-secondary w-full mt-3 py-2 rounded-lg text-xs">▶️ 顯示步驟教學</button>
+      <div id="atlasSteps" class="steps-row">
+        <div class="step-box"><img id="stepImg1" alt="步驟 1"><span>步驟 1 · 骨架</span></div>
+        <div class="step-box"><img id="stepImg2" alt="步驟 2"><span>步驟 2 · 加細節</span></div>
+        <div class="step-box"><img id="stepImg3" alt="步驟 3"><span>步驟 3 · 完成</span></div>
+      </div>
+      <p class="small-note" style="margin-top: 8px;">步驟教學係根據圖案筆畫順序自動分段：先學骨架，再加細節，最後完成。跟住次序畫就最似。</p>
+    </div>
+  </div>
+
+  <div id="galleryModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="modal-title">🖼 作品集相簿</h3>
+        <div class="flex gap-2 items-center">
+          <button id="gallerySaveBtn" class="btn-primary px-3 py-2 rounded-lg text-xs">💾 儲存目前作品</button>
+          <button class="modal-x" data-close>✕</button>
+        </div>
+      </div>
+      <div id="galleryGrid" class="gallery-grid"></div>
+      <p id="galleryEmpty" class="small-note" style="display: none;"></p>
+      <p class="small-note" style="margin-top: 10px;">作品只會儲存喺你部機入面（瀏覽器 IndexedDB），唔會上傳到任何伺服器。</p>
+    </div>
+  </div>
+
+  <div id="lightbox" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-head"><h3 class="modal-title" id="lbTitle">作品</h3><button class="modal-x" data-close>✕</button></div>
+      <img id="lbImg" alt="作品放大圖" style="width: 100%; border-radius: 10px; background: #fff;">
+      <div class="flex gap-2 mt-3">
+        <button id="lbDownload" class="btn-primary flex-1 py-2 rounded-lg text-sm">下載 PNG</button>
+        <button id="lbDelete" class="btn-secondary px-4 py-2 rounded-lg text-sm">刪除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-action-bar">
+    <button id="barGenerateBtn" class="btn-secondary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="重新生成">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      <span>生成</span>
+    </button>
+    <button id="barShareBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" style="display: none;" aria-label="分享圖片">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 6.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"/></svg>
+    </button>
+    <button id="barSaveBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="儲存到相簿" title="儲存到相簿">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    </button>
+    <button id="barPrintBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="列印作品">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
+    </button>
+    <button id="barDownloadBtn" class="btn-primary flex-1 rounded-lg flex items-center justify-center gap-2" aria-label="下載 PNG">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+      <span>下載 PNG</span>
+    </button>
   </div>
 
 <script>
@@ -211,6 +453,15 @@ class ZentangleGenerator {
     this.regionPatternAssign = [];
     this.partitionSalt = Math.random() * 10000;
     this.patternCache = new Map();
+    this.favorites = this.loadFavs();
+    this._favFilter = false;
+    this._atlasCur = 1;
+    this._lbUrl = null;
+    this._stepUrls = new Map();
+    this.regionLabelMap = null;
+    this.regionAdj = [];
+    this.regionSizes = null;
+    this.edgeMap = null;
 
     this.settings = {
       density: 52,
@@ -220,7 +471,10 @@ class ZentangleGenerator {
       addShading: true,
       showOutline: true,
       featureStrength: 'medium',
-      bgOption: 'white'
+      bgOption: 'white',
+      stringLines: true,
+      practiceMode: false,
+      regionShape: 'organic'
     };
 
     this.patterns = [
@@ -253,35 +507,93 @@ class ZentangleGenerator {
     uz.onclick = () => fi.click();
     uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
     uz.ondragleave = () => uz.classList.remove('dragover');
-    uz.ondrop = e => { e.preventDefault(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
-    fi.onchange = e => { if (e.target.files[0]) this.load(e.target.files[0]); };
+    uz.ondrop = e => { e.preventDefault(); e.stopPropagation(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
+    fi.onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) this.load(f); };
+
+    // 手機直接開相機拍照（capture=environment 用後置鏡頭）
+    this.el('cameraBtn').onclick = () => this.el('cameraInput').click();
+    this.el('galleryBtn').onclick = () => this.el('fileInput').click();
+    this.el('cameraInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) { this._cameraTip = true; this.load(f); } };
+
+    // 直接貼上截圖（Ctrl / Cmd + V）
+    document.addEventListener('paste', e => {
+      const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+      const imgItem = items.find(it => it.type && it.type.startsWith('image/'));
+      if (imgItem) { const f = imgItem.getAsFile(); if (f) this.load(f); }
+    });
+
+    // 全視窗拖放圖片即可匯入，並避免瀏覽器直接開啟圖片
+    ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+    window.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) this.load(f); });
+
+    this.el('resetBtn').onclick = () => this.reset();
+    this.el('barGenerateBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.generate(true); };
+    this.el('barDownloadBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.download(); };
+    this.el('barShareBtn').onclick = () => { if (!this.originalImage) { this.toast('請先上傳圖片', false); return; } this.sharePNG(); };
+    try { if (navigator.share && navigator.canShare) this.el('barShareBtn').style.display = 'flex'; } catch (err) {}
 
     this.el('densitySlider').oninput = e => { this.settings.density = +e.target.value; this.el('densityValue').textContent = e.target.value; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(); };
     this.el('strokeSlider').oninput = e => { this.settings.strokeWidth = +e.target.value / 10; this.el('strokeValue').textContent = this.settings.strokeWidth.toFixed(1) + 'px'; this.patternCache.clear(); if (this.originalImage) this.generateDebounced(true); };
     this.el('thresholdSlider').oninput = e => { this.settings.threshold = +e.target.value; this.el('thresholdValue').textContent = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('regionSlider').oninput = e => { this.settings.regionCount = +e.target.value; this.el('regionValue').textContent = e.target.value; this.regionPatternAssign = []; if (this.originalImage) this.generateDebounced(true); };
     this.el('addShading').onchange = e => { this.settings.addShading = e.target.checked; if (this.originalImage) this.generate(); };
+    this.el('stringLines').onchange = e => { this.settings.stringLines = e.target.checked; if (this.originalImage) this.generate(); };
+    this.el('practiceMode').onchange = e => { this.settings.practiceMode = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('showOutline').onchange = e => { this.settings.showOutline = e.target.checked; if (this.originalImage) this.generate(); };
     this.el('featureStrength').onchange = e => { this.settings.featureStrength = e.target.value; if (this.originalImage) this.generateDebounced(true); };
     this.el('bgOption').onchange = e => { this.settings.bgOption = e.target.value; if (this.originalImage) this.generate(); };
 
     this.el('generateBtn').onclick = () => this.generate(true);
     this.el('downloadBtn').onclick = () => this.download();
+    this.el('printBtn').onclick = () => this.openModal('printMenu');
+    this.el('barPrintBtn').onclick = () => this.openModal('printMenu');
+    this.el('printSheetBtn').onclick = () => this.printPatternSheet();
+    this.el('guideBtn').onclick = () => this.openModal('guideModal');
+    this.el('atlasBtn').onclick = () => this.openAtlas();
+    this.el('atlasFavBtn').onclick = () => { if (this._atlasCur) this.toggleFav(this._atlasCur); };
+    this.el('galleryBtn').onclick = () => this.openGallery();
+    this.el('gallerySaveBtn').onclick = () => this.saveToGallery();
+    this.el('barSaveBtn').onclick = () => this.saveToGallery();
+    this.el('lbDownload').onclick = () => this.downloadBlob(this._lbItem && this._lbItem.blob);
+    this.el('lbDelete').onclick = () => this.deleteFromGallery(this._lbItem && this._lbItem.id);
+    this.el('atlasStepsBtn').onclick = () => {
+      const row = this.el('atlasSteps');
+      const open = row.style.display !== 'none';
+      row.style.display = open ? 'none' : 'flex';
+      this.el('atlasStepsBtn').textContent = open ? '▶️ 顯示步驟教學' : '▲ 收起步驟教學';
+      if (!open) this.loadSteps(this._atlasCur);
+    };
+    this.el('regionShape').onchange = e => { this.settings.regionShape = e.target.value; if (this.originalImage) this.generateDebounced(true); };
+    this.el('atlasPrevBtn').onclick = () => this.atlasStep(-1);
+    this.el('atlasNextBtn').onclick = () => this.atlasStep(1);
+    this.el('randomPickBtn').onclick = () => this.randomPick();
+    this.el('favFilterBtn').onclick = () => this.toggleFavFilter();
+    document.querySelectorAll('#printMenu [data-print]').forEach(b => {
+      b.onclick = () => {
+        this.closeModal('printMenu');
+        const act = b.dataset.print;
+        if (act === 'artwork') this.printArtwork();
+        else if (act === 'sheet') this.printPatternSheet();
+        else this.printBlankTiles(act);
+      };
+    });
+    document.querySelectorAll('[data-close]').forEach(b => {
+      b.onclick = e => { e.stopPropagation(); const mb = b.closest('.modal-backdrop'); if (mb) this.closeModal(mb.id); };
+    });
+    document.querySelectorAll('.modal-backdrop').forEach(mb => {
+      mb.addEventListener('click', e => { if (e.target === mb) this.closeModal(mb.id); });
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.active').forEach(mb => this.closeModal(mb.id));
+    });
     this.el('selectAllBtn').onclick = () => this.selectAll(true);
     this.el('clearAllBtn').onclick = () => this.clearAll();
     this.el('shuffleBtn').onclick = () => { this.partitionSalt = Math.random() * 10000; this.regionPatternAssign = []; this.patternCache.clear(); if (this.originalImage) this.generate(true, true); };
     this.el('applyAssignBtn').onclick = () => this.generate();
 
-    document.addEventListener('click', () => document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')));
+    document.addEventListener('click', () => { document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); document.body.classList.remove('picker-open'); });
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.onclick = e => {
-        document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        const view = e.currentTarget.dataset.view;
-        this.el('regionAssignView').style.display = view === 'regions' ? 'block' : 'none';
-        this.regionCanvas.style.display = view === 'regions' ? 'block' : 'none';
-        this.mainCanvas.style.display = view === 'regions' ? 'none' : 'block';
-      };
+      btn.onclick = e => this.switchView(e.currentTarget.dataset.view);
     });
   }
 
@@ -295,13 +607,17 @@ class ZentangleGenerator {
     grid.innerHTML = '';
     this.patterns.forEach((pattern, i) => {
       const item = document.createElement('div');
-      item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''}`;
+      item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''} ${!pattern.isBlank && this.favorites.has(i) ? 'favorite' : ''}`;
       item.title = pattern.name;
-      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>`;
+      const star = pattern.isBlank ? '' : `<button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}" title="最愛">${this.favorites.has(i) ? '★' : '☆'}</button>`;
+      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>${star}`;
       item.onclick = () => this.togglePattern(i);
+      const st = item.querySelector('.fav-star');
+      if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
       grid.appendChild(item);
     });
     this.updateCount();
+    this.refreshFavUI();
   }
 
   togglePattern(i) {
@@ -328,15 +644,24 @@ class ZentangleGenerator {
   }
 
   load(file) {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) { this.toast('請選擇圖片檔案（PNG / JPG / WebP）', false); return; }
     const reader = new FileReader();
+    reader.onerror = () => this.toast('圖片讀取失敗，請再試一次', false);
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
         this.originalImage = img;
         this.partitionSalt = Math.random() * 10000;
         this.regionPatternAssign = [];
+        this.edgeMap = null;
+        this.regionLabelMap = null;
+        this.regionAdj = [];
+        this.regionSizes = null;
         let w = img.width, h = img.height;
-        const maxSide = 1200;
+        // 手機自動使用較低處理解析度保持流暢；桌機使用更高解析度，輸出更細緻
+        const smallDevice = Math.min(window.screen && window.screen.width || 1024, window.screen && window.screen.height || 768) < 520 || (navigator.hardwareConcurrency || 8) <= 4;
+        const maxSide = smallDevice ? 1000 : 1400;
         if (w > maxSide || h > maxSide) {
           const scale = maxSide / Math.max(w, h);
           w = Math.round(w * scale);
@@ -349,8 +674,15 @@ class ZentangleGenerator {
         this.originalCanvas.style.display = 'block';
         this.el('originalPlaceholder').style.display = 'none';
         this.el('generateBtn').disabled = false;
+        this.el('resetBtn').style.display = 'inline-flex';
+        if (this._cameraTip) {
+          this._cameraTip = false;
+          this.toast('已載入相片！如背景被填入圖案，可調高「背景容差」');
+        }
         if (this.selectedPatterns.size === 0) this.selectAll(false); // 自動不包含「空白」，避免大片留白
         else this.generate(true);
+        // 手機：上傳後自動捲動到預覽，立刻看到結果
+        if (window.matchMedia('(max-width: 1023px)').matches) this.el('previewCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
       img.src = e.target.result;
     };
@@ -372,9 +704,9 @@ class ZentangleGenerator {
       this.el('processingText').textContent = '提取內部特徵線...';
       await this.sleep(10);
       this.lineMask = this.extractLineMask(w, h);
-      this.el('processingText').textContent = '建立高質分區...';
+      this.el('processingText').textContent = this.settings.regionShape === 'zendala' ? '建立 Zendala 放射分區...' : '建立高質分區...';
       await this.sleep(10);
-      this.regions = this.segment(w, h);
+      this.regions = this.settings.regionShape === 'zendala' ? this.segmentZendala(w, h) : this.segment(w, h);
       this.assignPatterns(randomizeAssign);
       this.drawRegionPreview(w, h);
     }
@@ -652,8 +984,27 @@ class ZentangleGenerator {
     return c;
   }
 
+  computeEdgeMap(w, h) {
+    const d = this.sourceData.data;
+    const lum = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) { const p = i * 4; lum[i] = this.luma(d[p], d[p+1], d[p+2]); }
+    const em = new Uint8Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let x = 1; x < w - 1; x++) {
+        const id = row + x;
+        const a = lum[id-w-1], b = lum[id-w], c = lum[id-w+1];
+        const eL = lum[id-1], eR = lum[id+1];
+        const g = lum[id+w-1], h2 = lum[id+w], i2 = lum[id+w+1];
+        const gx = -a - 2*eL - g + c + 2*eR + i2;
+        const gy = -a - 2*b - c + g + 2*h2 + i2;
+        em[id] = Math.min(255, Math.sqrt(gx*gx + gy*gy) * 0.25);
+      }
+    }
+    return em;
+  }
+
   segment(w, h) {
-    const regions = [];
     const n = this.settings.regionCount;
     const mask = this.fillMask;
     const pixels = [];
@@ -661,12 +1012,11 @@ class ZentangleGenerator {
     for (let y=0; y<h; y++) for (let x=0; x<w; x++) if (mask[y*w+x]) {
       pixels.push(y*w+x); sumX+=x; sumY+=y; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
     }
-    if (!pixels.length) return regions;
+    if (!pixels.length) { this.regionLabelMap = null; this.regionAdj = []; this.regionSizes = null; return []; }
     const cx = sumX / pixels.length, cy = sumY / pixels.length;
     const seeds = [];
     const bw = Math.max(1, maxX-minX), bh = Math.max(1, maxY-minY);
     for (let i=0; i<n; i++) {
-      // Golden-angle seeds：比純隨機更平均，而且加少量 salt 讓「重新分區」有效
       const a = i * 2.399963 + this.seededRand(i+1) * 0.65;
       const rr = Math.sqrt((i + 0.55) / n);
       let sx = Math.round(cx + Math.cos(a) * bw * 0.42 * rr);
@@ -684,45 +1034,125 @@ class ZentangleGenerator {
       seeds.push({ x: sx, y: sy, r: this.sourceData.data[p], g: this.sourceData.data[p+1], b: this.sourceData.data[p+2] });
     }
 
-    for (let i=0; i<n; i++) regions.push({ mask: new Uint8Array(w*h) });
-    for (const id of pixels) {
-      const x = id % w, y = Math.floor(id / w), p = id * 4;
-      let best = 0, bestScore = Infinity;
-      for (let i=0; i<n; i++) {
-        const s = seeds[i];
-        const spatial = Math.hypot((x-s.x)/Math.max(50,bw), (y-s.y)/Math.max(50,bh)) * 100;
-        const color = this.colorDist(this.sourceData.data[p], this.sourceData.data[p+1], this.sourceData.data[p+2], s.r, s.g, s.b) * 0.12;
-        const score = spatial + color + this.seededRand(i*999 + id*0.001) * 2;
-        if (score < bestScore) { bestScore = score; best = i; }
+    // ===== 邊緣感知分區（geodesic / chamfer 距離）=====
+    // 跨過影像邊緣線嘅成本特別高，所以分區邊界會自然貼住主體結構走
+    // （例如眼睛周圍、翅膀分節），唔會再切出一粒粒同影像無關嘅圓形。
+    const em = this.computeEdgeMap(w, h);
+    const costMap = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) costMap[i] = 1 + (em[i] / 255) * 14 + (mask[i] ? 0 : 3);
+    const diagNorm = 100 * 0.85 / Math.max(60, (bw + bh) * 0.5);
+    const INF = 1e12;
+    const dist = new Float32Array(w * h);
+    const bestScore = new Float32Array(w * h).fill(Infinity);
+    const bestLabel = new Uint8Array(w * h);
+    const dsrc = this.sourceData.data;
+
+    for (let i = 0; i < n; i++) {
+      dist.fill(INF);
+      dist[seeds[i].y * w + seeds[i].x] = 0;
+      // forward scan
+      for (let y = 0; y < h; y++) {
+        const row = y * w;
+        for (let x = 0; x < w; x++) {
+          const id = row + x;
+          let dv = dist[id];
+          if (dv === 0) continue;
+          const c = costMap[id];
+          if (x > 0) { const v = dist[id-1] + c; if (v < dv) dv = v; }
+          if (y > 0) {
+            const v = dist[id-w] + c; if (v < dv) dv = v;
+            if (x > 0) { const v2 = dist[id-w-1] + c * 1.41; if (v2 < dv) dv = v2; }
+            if (x < w-1) { const v3 = dist[id-w+1] + c * 1.41; if (v3 < dv) dv = v3; }
+          }
+          dist[id] = dv;
+        }
       }
-      regions[best].mask[id] = 255;
+      // backward scan
+      for (let y = h-1; y >= 0; y--) {
+        const row = y * w;
+        for (let x = w-1; x >= 0; x--) {
+          const id = row + x;
+          let dv = dist[id];
+          const c = costMap[id];
+          if (x < w-1) { const v = dist[id+1] + c; if (v < dv) dv = v; }
+          if (y < h-1) {
+            const v = dist[id+w] + c; if (v < dv) dv = v;
+            if (x < w-1) { const v2 = dist[id+w+1] + c * 1.41; if (v2 < dv) dv = v2; }
+            if (x > 0) { const v3 = dist[id+w-1] + c * 1.41; if (v3 < dv) dv = v3; }
+          }
+          dist[id] = dv;
+        }
+      }
+      // 同顏色相近度合併計分，保留每個像素最靚嘅區
+      const sd = seeds[i];
+      for (let k = 0; k < pixels.length; k++) {
+        const id = pixels[k];
+        const p = id * 4;
+        const color = this.colorDist(dsrc[p], dsrc[p+1], dsrc[p+2], sd.r, sd.g, sd.b) * 0.12;
+        const score = dist[id] * diagNorm + color + this.seededRand(i * 999 + id * 0.001) * 2;
+        if (score < bestScore[id]) { bestScore[id] = score; bestLabel[id] = i; }
+      }
     }
-    return regions.filter(r => r.mask.some(Boolean));
+
+    const regionList = Array.from({ length: n }, () => ({ mask: new Uint8Array(w*h) }));
+    for (const id of pixels) regionList[bestLabel[id]].mask[id] = 255;
+    const kept = regionList.filter(r => r.mask.some(Boolean));
+
+    // 用過濾後嘅區重建 label map（等 index 同 this.regions 一致）
+    const label2 = new Uint8Array(w * h);
+    const sizes = new Array(kept.length).fill(0);
+    for (let r = 0; r < kept.length; r++) {
+      const m = kept[r].mask;
+      let c = 0;
+      for (let i = 0; i < w * h; i++) if (m[i]) { label2[i] = r + 1; c++; }
+      sizes[r] = c;
+    }
+    // 相鄰表：之後分配圖案避免相鄰區撞款
+    const adjSet = Array.from({ length: kept.length }, () => new Set());
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const id = row + x;
+        const a = label2[id];
+        if (!a) continue;
+        if (x < w-1) { const b = label2[id+1]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+        if (y < h-1) { const b = label2[id+w]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+      }
+    }
+    this.regionLabelMap = label2;
+    this.regionAdj = adjSet.map(st => Array.from(st));
+    this.regionSizes = sizes;
+    return kept;
   }
 
   assignPatterns(randomize = false) {
-    let selected = Array.from(this.selectedPatterns);
+    const selected = Array.from(this.selectedPatterns);
     if (!selected.length || !this.regions.length) return;
-    // 隨機排列時盡量避免抽到「空白」，除非使用者只選了空白。
+    // 盡量避免抽到「空白」，除非使用者只選了空白。
     const nonBlank = selected.filter(i => i !== 0);
     const pool = nonBlank.length ? nonBlank : selected;
+    const n = this.regions.length;
+    const adj = this.regionAdj || [];
 
-    if (randomize) {
-      this.regionPatternAssign = this.regions.map((_, i) => {
-        const idx = Math.floor(this.seededRand(i * 97 + pool.length * 13 + 5) * pool.length) % pool.length;
-        return pool[idx];
-      });
-      // 避免相鄰區域太常連續同圖案。
-      if (pool.length > 1) {
-        for (let i = 1; i < this.regionPatternAssign.length; i++) {
-          if (this.regionPatternAssign[i] === this.regionPatternAssign[i-1]) {
-            const current = pool.indexOf(this.regionPatternAssign[i]);
-            this.regionPatternAssign[i] = pool[(current + 1 + Math.floor(this.seededRand(i * 41) * (pool.length - 1))) % pool.length];
-          }
+    // 大區域先分配，再加上相鄰避重：效果接近手繪禪繞嘅分佈
+    const order = Array.from({ length: n }, (_, i) => i)
+      .sort((a, b) => ((this.regionSizes && this.regionSizes[b]) || 0) - ((this.regionSizes && this.regionSizes[a]) || 0));
+    const conflict = (ri, pi) => (adj[ri] || []).some(nb => this.regionPatternAssign[nb] === pi);
+
+    this.regionPatternAssign = new Array(n).fill(pool[0]);
+    for (const ri of order) {
+      let pick = null;
+      if (randomize) {
+        for (let t = 0; t < 8; t++) {
+          const cand = pool[Math.floor(this.seededRand(ri * 97 + t * 13 + pool.length * 7 + 5) * pool.length) % pool.length];
+          if (!conflict(ri, cand)) { pick = cand; break; }
         }
+        if (pick === null) pick = pool[Math.floor(this.seededRand(ri * 31 + 9) * pool.length) % pool.length];
+      } else {
+        const base = pool[ri % pool.length];
+        pick = !conflict(ri, base) ? base : (pool.find(pi => !conflict(ri, pi)) ?? base);
       }
-    } else {
-      this.regionPatternAssign = this.regions.map((_, i) => selected[i % selected.length]);
+      this.regionPatternAssign[ri] = pick;
     }
     this.updateRegionUI();
   }
@@ -748,10 +1178,10 @@ class ZentangleGenerator {
         opt.type = 'button';
         opt.className = 'picker-option hover:bg-white/20 p-1 cursor-pointer rounded transition-colors bg-white';
         opt.innerHTML = this.patterns[idx].isBlank ? '<div class="w-8 h-8 bg-white mx-auto"></div>' : `<img src="${this.patterns[idx].url}" class="w-8 h-8 object-contain mx-auto" alt="${this.patterns[idx].name}">`;
-        opt.onclick = e => { e.stopPropagation(); this.regionPatternAssign[i] = idx; this.updateRegionUI(); this.render(this.mainCanvas.width, this.mainCanvas.height); };
+        opt.onclick = e => { e.stopPropagation(); this.regionPatternAssign[i] = idx; document.body.classList.remove('picker-open'); this.updateRegionUI(); this.render(this.mainCanvas.width, this.mainCanvas.height); };
         picker.appendChild(opt);
       });
-      previewBtn.onclick = e => { e.stopPropagation(); const open = picker.classList.contains('active'); document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); if (!open) picker.classList.add('active'); };
+      previewBtn.onclick = e => { e.stopPropagation(); const open = picker.classList.contains('active'); document.querySelectorAll('.pattern-picker-popup').forEach(el => el.classList.remove('active')); document.body.classList.remove('picker-open'); if (!open) { picker.classList.add('active'); document.body.classList.add('picker-open'); } };
       card.appendChild(previewBtn);
       card.appendChild(picker);
       grid.appendChild(card);
@@ -785,8 +1215,9 @@ class ZentangleGenerator {
   async getPatternTile(patternIndex) {
     const pattern = this.patterns[patternIndex];
     if (!pattern || pattern.isBlank) return null;
-    const size = Math.round(this.settings.density);
-    const key = `${patternIndex}-${size}-${this.settings.strokeWidth.toFixed(1)}-seamless2`;
+    // 以 1.75x 解像度點陣化，填色時縮返細，線條會更銳利（唔起格）
+    const size = this.clamp(Math.round(this.settings.density * 1.75), 32, 264);
+    const key = `${patternIndex}-${size}-${this.settings.strokeWidth.toFixed(1)}-seamless3`;
     if (this.patternCache.has(key)) return this.patternCache.get(key);
 
     const img = await this.loadImage(pattern.url);
@@ -834,20 +1265,23 @@ class ZentangleGenerator {
     return thick;
   }
 
-  async fillRegionWithPattern(ctx, regionMask, patternIndex, w, h, tint = 0, regionIndex = 0) {
+  async fillRegionWithPattern(ctx, regionMask, patternIndex, w, h, style = {}, regionIndex = 0) {
     if (patternIndex === 0) return;
     const tile = await this.getPatternTile(patternIndex);
     if (!tile) return;
+    const tint = style.tint || 0;
     const layer = this.makeCanvas(w, h);
     const lctx = layer.getContext('2d');
     const pattern = lctx.createPattern(tile, 'repeat');
     if (!pattern) return;
 
     // 每個區域用不同 offset / rotation / scale，避免所有圖案都從同一個水平線開始排列。
+    // tile 係以 1.75x 解像度點陣化，所以整體再乘 1/1.75 縮返細 → 線條更細緻。
+    const q = 1 / 1.75;
     const offsetX = this.seededRand(patternIndex * 37 + regionIndex * 101 + 1) * tile.width;
     const offsetY = this.seededRand(patternIndex * 53 + regionIndex * 89 + 2) * tile.height;
     const angle = (this.seededRand(patternIndex * 71 + regionIndex * 43 + 3) - 0.5) * Math.PI * 0.55;
-    const scale = 0.92 + this.seededRand(patternIndex * 29 + regionIndex * 67 + 4) * 0.18;
+    const scale = (0.92 + this.seededRand(patternIndex * 29 + regionIndex * 67 + 4) * 0.18) * (style.scale || 1) * q;
 
     lctx.save();
     lctx.translate(w / 2 + offsetX, h / 2 + offsetY);
@@ -895,6 +1329,19 @@ class ZentangleGenerator {
       ctx.clearRect(0, 0, w, h);
     }
 
+    // 練習稿模式：只畫淺灰串線，等用戶自己手填圖案（最原汁原味嘅玩法）
+    if (this.settings.practiceMode) {
+      const line = this.stringLineMask(w, h);
+      if (line) {
+        const c = this.makeCanvas(w, h);
+        this.drawMaskInk(c.getContext('2d'), this.dilate(line, w, h, 1), w, h, [128, 128, 128, 205]);
+        ctx.drawImage(c, 0, 0);
+      }
+      this.mainCtx.clearRect(0, 0, w, h);
+      this.mainCtx.drawImage(result, 0, 0);
+      return;
+    }
+
     // 先放白色底形：透明 PNG 的外圍白邊已在遮罩階段移除。
     // 注意：用獨立 layer 裁切，避免白底模式被 destination-in 變成透明。
     const whiteShape = this.maskToCanvas(this.visibleMask, w, h);
@@ -906,11 +1353,29 @@ class ZentangleGenerator {
     shapeCtx.drawImage(whiteShape,0,0);
     ctx.drawImage(shapeLayer, 0, 0);
 
-    // 每個分區填不同禪繞圖案；圖案本身是透明底黑線，不會再讓畫面變灰。
+    // 每個分區有獨立嘅縮放同深淺：模仿手繪禪繞「一格大一格細、一格深一格淺」嘅節奏。
+    const styles = this.regions.map((_, i) => {
+      const u = this.seededRand(i * 57 + 3);
+      const tone = !this.settings.addShading ? 0
+        : u < 0.16 ? 0.32   // 深色重點區（真禪繞成日有一兩格近全黑）
+        : u < 0.42 ? 0.13
+        : u < 0.78 ? 0.05
+        : 0;
+      return { scale: 0.72 + this.seededRand(i * 131 + 7) * 0.85, tint: tone };
+    });
     for (let i=0; i<this.regions.length; i++) {
       const pi = this.regionPatternAssign[i] ?? Array.from(this.selectedPatterns)[0] ?? 0;
-      const tint = this.settings.addShading ? (i % 4) * 0.025 : 0;
-      await this.fillRegionWithPattern(ctx, this.regions[i].mask, pi, w, h, tint, i);
+      await this.fillRegionWithPattern(ctx, this.regions[i].mask, pi, w, h, styles[i], i);
+    }
+
+    // 分區串線（string）：沿住區域邊界畫墨線，係真禪繞嘅靈魂。
+    if (this.settings.stringLines && this.regionLabelMap) {
+      const line = this.stringLineMask(w, h);
+      if (line) {
+        const stringCanvas = this.makeCanvas(w, h);
+        this.drawMaskInk(stringCanvas.getContext('2d'), this.dilate(line, w, h, 1), w, h, [17, 17, 17, 235]);
+        ctx.drawImage(stringCanvas, 0, 0);
+      }
     }
 
     // 柔和的灰階陰影：用原圖明暗做非常淡的 multiply，提升立體感但不污染成大片灰。
@@ -951,12 +1416,566 @@ class ZentangleGenerator {
     this.mainCtx.drawImage(result,0,0);
   }
 
-  download() {
+  switchView(view) {
+    document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x.dataset.view === view));
+    this.el('regionAssignView').style.display = view === 'regions' ? 'block' : 'none';
+    this.regionCanvas.style.display = view === 'regions' ? 'block' : 'none';
+    this.mainCanvas.style.display = view === 'regions' ? 'none' : 'block';
+  }
+
+  reset() {
+    if (!this.originalImage) { this.toast('目前沒有可清除的圖片', false); return; }
+    this.originalImage = null;
+    this.sourceData = null;
+    this.visibleMask = null;
+    this.fillMask = null;
+    this.lineMask = null;
+    this.regions = [];
+    this.regionPatternAssign = [];
+    this.partitionSalt = Math.random() * 10000;
+    this.patternCache.clear();
+    this.regionLabelMap = null;
+    this.regionAdj = [];
+    this.regionSizes = null;
+    this.edgeMap = null;
+    [this.mainCanvas, this.regionCanvas, this.originalCanvas].forEach(c => {
+      c.getContext('2d').clearRect(0, 0, c.width, c.height);
+      c.style.display = 'none';
+    });
+    this.el('placeholderText').style.display = 'flex';
+    this.el('originalPlaceholder').style.display = 'block';
+    this.el('generateBtn').disabled = true;
+    this.el('regionAssignView').style.display = 'none';
+    this.el('resetBtn').style.display = 'none';
+    this.switchView('final');
+    this.toast('已清除圖片，可重新上傳');
+  }
+
+  toPNGBlob() { return new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png')); }
+
+  // ===== 列印 =====
+  // 用隱藏 iframe 生成獨立列印文件：只印作品／圖案表，唔會印到 App 介面。
+  printHTML(html) {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    const kick = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {} };
+    // 等文件內所有圖片載入先叫 print，唔會印出空白頁
+    const win = iframe.contentWindow;
+    const waitImgs = () => {
+      const imgs = Array.from(doc.images || []);
+      let pending = imgs.length;
+      if (!pending) { setTimeout(kick, 80); return; }
+      let done = false;
+      const next = () => { if (done) return; if (--pending <= 0) { done = true; setTimeout(kick, 80); } };
+      imgs.forEach(im => { if (im.complete) next(); else { im.onload = next; im.onerror = next; } });
+      setTimeout(() => { if (!done) { done = true; kick(); } }, 4000); // 保險：最多等 4 秒
+    };
+    if (doc.readyState === 'complete') waitImgs();
+    else win.addEventListener('load', waitImgs);
+    setTimeout(() => iframe.remove(), 60000); // 列印對話框關閉後清走 iframe
+  }
+
+  printArtwork() {
+    if (!this.originalImage) { this.toast('請先上傳圖片並生成', false); return; }
+    try {
+      const dataUrl = this.mainCanvas.toDataURL('image/png'); // 同步取圖，保留用戶手勢
+      const landscape = this.mainCanvas.width > this.mainCanvas.height;
+      this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>禪繞畫 Zentangle</title><style>
+        @page { size: A4 ${landscape ? 'landscape' : 'portrait'}; margin: 10mm; }
+        html, body { margin: 0; padding: 0; background: #fff; }
+        body { min-height: 96vh; display: flex; align-items: center; justify-content: center; }
+        img { max-width: 100%; max-height: 96vh; }
+      </style></head><body><img src="${dataUrl}" alt="Zentangle artwork"></body></html>`);
+      this.toast('已開啟列印');
+    } catch (err) {
+      this.toast('列印失敗，請再試一次', false);
+    }
+  }
+
+  printPatternSheet() {
+    try {
+      const cells = this.patterns
+        .filter(p => !p.isBlank)
+        .map((p, i) => `<div class="cell"><div class="imgbox"><img src="${p.url}" alt=""></div><span>${i + 1}</span></div>`)
+        .join('');
+      this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Zentangle 圖案參考表</title><style>
+        @page { size: A4 portrait; margin: 10mm; }
+        html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+        h1 { font-size: 15px; text-align: center; margin: 0 0 8px; }
+        .sub { font-size: 9px; color: #666; text-align: center; margin-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4mm; }
+        .cell { border: 0.4mm solid #bbb; border-radius: 2mm; padding: 2mm; text-align: center; }
+        .imgbox { height: 20mm; display: flex; align-items: center; justify-content: center; }
+        .imgbox img { max-width: 100%; max-height: 100%; }
+        .cell span { display: block; font-size: 9px; color: #444; margin-top: 1.5mm; }
+      </style></head><body>
+        <h1>Zentangle 圖案參考表 · Scout System</h1>
+        <p class="sub">共 45 款 · 配合「禪繞畫工具」使用</p>
+        <div class="grid">${cells}</div>
+      </body></html>`);
+      this.toast('已開啟圖案參考表列印');
+    } catch (err) {
+      this.toast('列印失敗，請再試一次', false);
+    }
+  }
+
+  async download() {
     if (!this.originalImage) return;
-    const link = document.createElement('a');
-    link.download = `zentangle-${Date.now()}.png`;
-    link.href = this.mainCanvas.toDataURL('image/png');
-    link.click();
+    try {
+      const blob = await this.toPNGBlob();
+      if (!blob) throw new Error('blob failed');
+      // Blob URL 在 iOS Safari 上比 data URL 更可靠
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `zentangle-${Date.now()}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast('PNG 已下載');
+    } catch (err) {
+      this.toast('下載失敗，請再試一次', false);
+    }
+  }
+
+  async sharePNG() {
+    if (!this.originalImage) return;
+    try {
+      const blob = await this.toPNGBlob();
+      if (!blob) throw new Error('blob failed');
+      const file = new File([blob], `zentangle-${Date.now()}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: '禪繞畫 Zentangle' });
+        this.toast('已開啟分享');
+      } else {
+        this.download();
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // 使用者取消分享
+      this.download();
+    }
+  }
+
+  // ===== 彈窗 =====
+  openModal(id) { this.el(id).classList.add('active'); }
+  closeModal(id) {
+    this.el(id).classList.remove('active');
+    if (id === 'lightbox' && this._lbUrl) { URL.revokeObjectURL(this._lbUrl); this._lbUrl = null; }
+  }
+
+  // ===== 最愛 =====
+  loadFavs() { try { return new Set(JSON.parse(localStorage.getItem('zt-favs') || '[]')); } catch (e) { return new Set(); } }
+  saveFavs() { try { localStorage.setItem('zt-favs', JSON.stringify(Array.from(this.favorites))); } catch (e) {} }
+
+  toggleFav(i) {
+    if (!i) return;
+    if (this.favorites.has(i)) this.favorites.delete(i); else this.favorites.add(i);
+    this.saveFavs();
+    this.refreshFavUI();
+    if (this._atlasCur) this.renderAtlasMain(this._atlasCur);
+  }
+
+  refreshFavUI() {
+    document.querySelectorAll('.pattern-item').forEach((el, idx) => {
+      const fav = this.favorites.has(idx);
+      const st = el.querySelector('.fav-star');
+      if (st) { st.classList.toggle('on', fav); st.textContent = fav ? '★' : '☆'; }
+      el.classList.toggle('favorite', fav);
+    });
+    document.querySelectorAll('.atlas-item').forEach(el => {
+      const i = +el.dataset.i;
+      const fav = this.favorites.has(i);
+      const st = el.querySelector('.fav-star');
+      if (st) { st.classList.toggle('on', fav); st.textContent = fav ? '★' : '☆'; }
+    });
+    this.applyFavFilter();
+  }
+
+  applyFavFilter() {
+    this.el('patternGrid').classList.toggle('fav-filter', !!this._favFilter);
+    this.el('favFilterBtn').classList.toggle('fav-btn-active', !!this._favFilter);
+  }
+
+  toggleFavFilter() { this._favFilter = !this._favFilter; this.applyFavFilter(); }
+
+  randomPick() {
+    const pool = this.patterns.map((p, i) => (!p.isBlank ? i : -1)).filter(i => i > 0);
+    const picks = [];
+    while (picks.length < 6 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    this.selectedPatterns = new Set(picks);
+    document.querySelectorAll('.pattern-item').forEach((el, idx) => el.classList.toggle('selected', this.selectedPatterns.has(idx)));
+    this.updateCount();
+    if (this.originalImage) { this.assignPatterns(); this.generate(); }
+    this.toast('🎲 隨機揀咗 6 款圖案');
+  }
+
+  // ===== 圖鑑 =====
+  openAtlas() {
+    if (!this._atlasBuilt) this.renderAtlas();
+    if (!this._atlasCur) this._atlasCur = 1;
+    this.renderAtlasMain(this._atlasCur);
+    this.openModal('atlasModal');
+  }
+
+  renderAtlas() {
+    const grid = this.el('atlasGrid');
+    grid.innerHTML = '';
+    this.patterns.forEach((p, i) => {
+      if (p.isBlank) return;
+      const cell = document.createElement('div');
+      cell.className = 'atlas-item' + (i === this._atlasCur ? ' current' : '');
+      cell.dataset.i = i;
+      cell.innerHTML = `<img src="${p.url}" alt="${p.name}"><button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}">${this.favorites.has(i) ? '★' : '☆'}</button>`;
+      cell.onclick = () => { this._atlasCur = i; this.renderAtlas(); this.renderAtlasMain(i); };
+      const st = cell.querySelector('.fav-star');
+      if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
+      grid.appendChild(cell);
+    });
+    this._atlasBuilt = true;
+  }
+
+  renderAtlasMain(i) {
+    const p = this.patterns[i];
+    if (!p) return;
+    this.el('atlasMainImg').src = p.url;
+    this.el('atlasMainName').textContent = p.name;
+    this.el('atlasPos').textContent = `${i} / 45`;
+    const fb = this.el('atlasFavBtn');
+    const fav = this.favorites.has(i);
+    fb.textContent = fav ? '★ 已係最愛' : '⭐ 最愛';
+    fb.classList.toggle('fav-btn-active', fav);
+    document.querySelectorAll('.atlas-item').forEach(el => el.classList.toggle('current', +el.dataset.i === i));
+    const stepsRow = this.el('atlasSteps');
+    if (stepsRow && stepsRow.style.display !== 'none') this.loadSteps(i);
+  }
+
+  atlasStep(d) {
+    let i = this._atlasCur + d;
+    if (i < 1) i = 45;
+    if (i > 45) i = 1;
+    this._atlasCur = i;
+    this.renderAtlas();
+    this.renderAtlasMain(i);
+  }
+
+  // ===== 空白畫磚列印 =====
+  printBlankTiles(shape) {
+    const cfg = {
+      square:  { count: 6,  cols: 2, css: 'width:89mm;height:89mm;border-radius:1.5mm;',  label: '空白禪繞方磚 · 89mm' },
+      zendala: { count: 6,  cols: 2, css: 'width:89mm;height:89mm;border-radius:50%;',   label: '空白 Zendala 圓磚 · ⌀89mm' },
+      bijou:   { count: 12, cols: 3, css: 'width:51mm;height:51mm;border-radius:1mm;',   label: '空白 Bijou 小磚 · 51mm' }
+    }[shape];
+    if (!cfg) return;
+    let cells = '';
+    for (let i = 0; i < cfg.count; i++) cells += `<div class="tile" style="${cfg.css}"><span>${i + 1}</span></div>`;
+    this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${cfg.label}</title><style>
+      @page { size: A4 portrait; margin: 6mm; }
+      html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
+      h1 { font-size: 11px; text-align: center; margin: 0 0 4mm; color: #444; font-weight: normal; }
+      .sheet { display: grid; grid-template-columns: repeat(${cfg.cols}, auto); gap: 5mm; justify-content: center; }
+      .tile { position: relative; border: 0.35mm solid #aaa; }
+      .tile span { position: absolute; right: 2mm; bottom: 1mm; font-size: 8px; color: #bbb; }
+    </style></head><body>
+      <h1>${cfg.label} · Scout System</h1>
+      <div class="sheet">${cells}</div>
+    </body></html>`);
+    this.toast('已開啟空白畫磚列印');
+  }
+
+  stringLineMask(w, h) {
+    const lm = this.regionLabelMap;
+    if (!lm) return null;
+    const line = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const id = row + x;
+        const a = lm[id];
+        if (!a) continue;
+        if (x > 0 && lm[id-1] && lm[id-1] !== a) { line[id] = 255; line[id-1] = 255; }
+        if (y > 0 && lm[id-w] && lm[id-w] !== a) { line[id] = 255; line[id-w] = 255; }
+      }
+    }
+    return line;
+  }
+
+  // ===== Zendala 放射分區 =====
+  finalizeRegions(regionList, w, h) {
+    const kept = [];
+    for (const r of regionList) {
+      let c = 0;
+      for (let i = 0; i < r.mask.length; i++) if (r.mask[i]) c++;
+      if (c > 0) kept.push(r);
+    }
+    const label2 = new Uint8Array(w * h);
+    const sizes = new Array(kept.length).fill(0);
+    for (let r = 0; r < kept.length; r++) {
+      const m = kept[r].mask;
+      let c = 0;
+      for (let i = 0; i < w * h; i++) if (m[i]) { label2[i] = r + 1; c++; }
+      sizes[r] = c;
+    }
+    const adjSet = Array.from({ length: kept.length }, () => new Set());
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const id = row + x;
+        const a = label2[id];
+        if (!a) continue;
+        if (x < w-1) { const b = label2[id+1]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+        if (y < h-1) { const b = label2[id+w]; if (b && b !== a) { adjSet[a-1].add(b-1); adjSet[b-1].add(a-1); } }
+      }
+    }
+    this.regionLabelMap = label2;
+    this.regionAdj = adjSet.map(st => Array.from(st));
+    this.regionSizes = sizes;
+    return kept;
+  }
+
+  segmentZendala(w, h) {
+    const mask = this.fillMask;
+    const pixels = [];
+    let cx = 0, cy = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (mask[y*w+x]) { pixels.push(y*w+x); cx += x; cy += y; }
+    if (!pixels.length) { this.regionLabelMap = null; this.regionAdj = []; this.regionSizes = null; return []; }
+    cx /= pixels.length; cy /= pixels.length;
+    const ds = pixels.map(id => { const x = id % w, y = (id - x) / w; return Math.hypot(x - cx, y - cy); }).sort((a, b) => a - b);
+    const R = ds[Math.floor(ds.length * 0.96)] || 1;
+    // 放射對稱：楔形數量跟「分區數量」滑桿自動配 6/8/10/12
+    const rc = this.settings.regionCount;
+    const wedges = rc <= 6 ? 6 : rc <= 10 ? 8 : rc <= 13 ? 10 : 12;
+    const s1 = this.seededRand(11) * 6.28, s2 = this.seededRand(23) * 6.28, s3 = this.seededRand(37) * 6.28;
+    const t1 = R * 0.38, t2 = R * 0.70;
+    const n = wedges * 2 + 1;
+    const regionList = Array.from({ length: n }, () => ({ mask: new Uint8Array(w * h) }));
+    for (const id of pixels) {
+      const x = id % w, y = (id - x) / w;
+      const dx = x - cx, dy = y - cy;
+      const r = Math.hypot(dx, dy);
+      const th = Math.atan2(dy, dx);
+      // 手繪感：半徑同行角度都有輕微 wobble，唔會太機械
+      const wob = 1 + 0.05 * Math.sin(3 * th + s1) + 0.03 * Math.sin(5 * th + s2);
+      const rw = r * wob;
+      const ring = rw < t1 ? 0 : rw < t2 ? 1 : 2;
+      let a = (th + Math.PI + 0.03 * Math.sin(4 * th + s3)) / (2 * Math.PI);
+      a = ((a % 1) + 1) % 1;
+      const widx = Math.min(wedges - 1, Math.floor(a * wedges));
+      const ri = ring === 0 ? 0 : ring === 1 ? 1 + widx : 1 + wedges + widx;
+      regionList[ri].mask[id] = 255;
+    }
+    return this.finalizeRegions(regionList, w, h);
+  }
+
+  // ===== 步驟教學（自動由 SVG 筆畫順序分段）=====
+  // 每個圖案 SVG 係一條大 path，入面每筆係一個 M/m 子路徑；
+  // 按子路徑順序保留頭 35% / 65% / 100% 就係「骨架 → 加細節 → 完成」。
+  async buildStepOuts(i) {
+    const p = this.patterns[i];
+    if (!p || p.isBlank) return null;
+    if (this._stepUrls.has(i)) return this._stepUrls.get(i);
+    const res = await fetch(p.url);
+    if (!res.ok) throw new Error('svg load failed');
+    const text = await res.text();
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const svg = doc.documentElement;
+    const paths = Array.from(svg.querySelectorAll('path')).filter(pt => (pt.getAttribute('d') || '').length > 10);
+    const mk = frac => {
+      const c = svg.cloneNode(true);
+      const cPaths = Array.from(c.querySelectorAll('path'));
+      paths.forEach((pt, k) => {
+        const d = pt.getAttribute('d') || '';
+        const subs = d.match(/[Mm][^Mm]*/g) || [];
+        if (subs.length > 1 && cPaths[k]) {
+          const keep = subs.slice(0, Math.max(1, Math.round(subs.length * frac)));
+          cPaths[k].setAttribute('d', keep.join(' '));
+        }
+      });
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(new XMLSerializer().serializeToString(c));
+    };
+    const out = [mk(0.35), mk(0.65), mk(1)];
+    this._stepUrls.set(i, out);
+    return out;
+  }
+
+  async loadSteps(i) {
+    const p = this.patterns[i];
+    const imgs = [this.el('stepImg1'), this.el('stepImg2'), this.el('stepImg3')];
+    if (!p || p.isBlank) { imgs.forEach(im => { im.src = '/patterns/blank.svg'; im.style.opacity = '1'; }); return; }
+    imgs.forEach(im => { im.style.opacity = '.3'; });
+    try {
+      const urls = await this.buildStepOuts(i);
+      if (this._atlasCur !== i) return; // 已轉咗另一款
+      imgs.forEach((im, k) => { im.src = urls[k]; im.style.opacity = '1'; });
+    } catch (e) {
+      imgs.forEach(im => { im.style.opacity = '1'; });
+    }
+  }
+
+  // ===== 作品集相簿（IndexedDB 本地儲存）=====
+  openGalleryDB() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error('no idb'));
+      const req = indexedDB.open('zt-gallery', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('works', { keyPath: 'id' }); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  idbAll(db) { return new Promise((res, rej) => { const r = db.transaction('works', 'readonly').objectStore('works').getAll(); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); }); }
+  idbPut(db, item) { return new Promise((res, rej) => { const tx = db.transaction('works', 'readwrite'); tx.objectStore('works').put(item); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+  idbDel(db, id) { return new Promise((res, rej) => { const tx = db.transaction('works', 'readwrite'); tx.objectStore('works').delete(id); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+
+  async openGallery() {
+    this.openModal('galleryModal');
+    this.renderGallery();
+  }
+
+  async renderGallery() {
+    const grid = this.el('galleryGrid');
+    const empty = this.el('galleryEmpty');
+    grid.innerHTML = '';
+    let items = [];
+    try {
+      const db = await this.openGalleryDB();
+      items = await this.idbAll(db);
+      db.close();
+    } catch (e) {
+      empty.style.display = 'block';
+      empty.textContent = '相簿需要瀏覽器 IndexedDB 支援，而家開唔到（可能係私密瀏覽模式）。';
+      return;
+    }
+    items.sort((a, b) => b.id - a.id);
+    empty.style.display = items.length ? 'none' : 'block';
+    empty.textContent = '仲未有作品。生成之後撳「💾 儲存」加入相簿。';
+    items.forEach(it => {
+      const card = document.createElement('div');
+      card.className = 'gallery-card';
+      const d = new Date(it.id);
+      const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
+      card.innerHTML = `<img alt="作品縮圖"><div class="gallery-meta">${d.toLocaleDateString('zh-TW')} ${hh}:${mm} · ${it.w}×${it.h}</div><div class="gallery-actions"><button class="btn-secondary" data-a="dl">下載</button><button class="btn-secondary" data-a="del">刪除</button></div>`;
+      card.querySelector('img').src = it.thumb;
+      card.querySelector('img').onclick = () => this.showLightbox(it);
+      const btns = card.querySelectorAll('button');
+      btns[0].onclick = () => this.downloadBlob(it.blob);
+      btns[1].onclick = async () => {
+        const del = btns[1];
+        if (del.dataset.c !== '1') { del.dataset.c = '1'; del.textContent = '確認?'; setTimeout(() => { del.dataset.c = ''; del.textContent = '刪除'; }, 2400); return; }
+        try {
+          const db = await this.openGalleryDB();
+          await this.idbDel(db, it.id);
+          db.close();
+          this.renderGallery();
+          this.updateGalleryBadge();
+          this.toast('已刪除');
+        } catch (e) { this.toast('刪除失敗', false); }
+      };
+      grid.appendChild(card);
+    });
+  }
+
+  makeThumbDataUrl(size) {
+    const s = Math.min(1, size / Math.max(this.mainCanvas.width, this.mainCanvas.height));
+    const c = this.makeCanvas(Math.max(1, Math.round(this.mainCanvas.width * s)), Math.max(1, Math.round(this.mainCanvas.height * s)));
+    const cctx = c.getContext('2d');
+    cctx.fillStyle = '#fff';
+    cctx.fillRect(0, 0, c.width, c.height);
+    cctx.drawImage(this.mainCanvas, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  }
+
+  async saveToGallery() {
+    if (!this.originalImage) { this.toast('請先上傳並生成作品', false); return; }
+    try {
+      const blob = await this.toPNGBlob();
+      const item = { id: Date.now(), blob, thumb: this.makeThumbDataUrl(300), w: this.mainCanvas.width, h: this.mainCanvas.height };
+      const db = await this.openGalleryDB();
+      await this.idbPut(db, item);
+      db.close();
+      this.updateGalleryBadge();
+      this.toast('已儲存到相簿 ✅');
+    } catch (e) {
+      this.toast('儲存失敗（瀏覽器空間或私隱模式限制）', false);
+    }
+  }
+
+  async updateGalleryBadge() {
+    try {
+      const db = await this.openGalleryDB();
+      const items = await this.idbAll(db);
+      db.close();
+      const chip = this.el('galleryCount');
+      chip.textContent = items.length;
+      chip.style.display = items.length ? 'inline-block' : 'none';
+    } catch (e) {}
+  }
+
+  showLightbox(item) {
+    if (!item) return;
+    this._lbItem = item;
+    if (this._lbUrl) URL.revokeObjectURL(this._lbUrl);
+    this._lbUrl = URL.createObjectURL(item.blob);
+    this.el('lbImg').src = this._lbUrl;
+    const d = new Date(item.id);
+    this.el('lbTitle').textContent = `${d.toLocaleDateString('zh-TW')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const del = this.el('lbDelete');
+    del.dataset.confirm = '';
+    del.textContent = '刪除';
+    del.classList.remove('fav-btn-active');
+    this.openModal('lightbox');
+  }
+
+  async deleteFromGallery(id) {
+    if (!id) return;
+    const btn = this.el('lbDelete');
+    if (btn.dataset.confirm !== '1') {
+      btn.dataset.confirm = '1';
+      btn.textContent = '確認刪除？';
+      btn.classList.add('fav-btn-active');
+      setTimeout(() => { btn.dataset.confirm = ''; btn.textContent = '刪除'; btn.classList.remove('fav-btn-active'); }, 2600);
+      return;
+    }
+    btn.dataset.confirm = '';
+    btn.textContent = '刪除';
+    btn.classList.remove('fav-btn-active');
+    try {
+      const db = await this.openGalleryDB();
+      await this.idbDel(db, id);
+      db.close();
+      this.closeModal('lightbox');
+      this.renderGallery();
+      this.updateGalleryBadge();
+      this.toast('已刪除');
+    } catch (e) { this.toast('刪除失敗', false); }
+  }
+
+  downloadBlob(blob, name) {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = name || `zentangle-${Date.now()}.png`;
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  toast(msg, ok = true) {
+    const wrap = this.el('toastContainer');
+    if (!wrap) return;
+    const t = document.createElement('div');
+    t.className = 'toast-item' + (ok ? '' : ' err');
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 2200);
   }
 }
 
