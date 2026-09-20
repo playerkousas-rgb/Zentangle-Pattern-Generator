@@ -1,0 +1,53 @@
+# ============================================================
+# Vercel 部署瘦身清單（本檔案是防配額爆滿的第一道防線）
+# 規則：只有「建置與執行最終網頁」需要的檔案才應上傳。
+# 維護提醒：新增任何資料夾 / 檔案時，先問自己「部署需要它嗎？」
+# 不需要 → 加進本清單。詳見 README.md「防增肥守則」。
+# ============================================================
+
+# --- 版本控制與本機環境（Vercel 會自行重新安裝依賴）---
+.git
+.gitignore
+.gitattributes
+node_modules
+.vercel
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# --- 建置產物與快取（Vercel 建置時會重新產生，勿上傳本地快取）---
+dist
+*.tsbuildinfo
+.eslintcache
+
+# --- 記錄、備份與暫存檔 ---
+*.log
+logs
+*.bak
+*.tmp
+*.old
+*.orig
+*.swp
+
+# --- 測試上傳 / 開發暫存資料夾 ---
+uploads/
+public/uploads/
+tmp/
+temp/
+
+# --- 文件與開發工具設定（部署執行時用不到）---
+README.md
+eslint.config.js
+
+# --- Arena 開發環境專用外掛（vite.config.ts 會 try/catch 略過）---
+.vite-source-tags.js
+
+# ============================================================
+# ⚠️ 下列檔案「絕對不可」加入本清單，否則 Vercel 建置會失敗：
+#    package.json / package-lock.json（安裝依賴）
+#    vite.config.ts / tsconfig*.json（npm run build 需要 tsc -b）
+#    index.html（應用程式本體）
+#    public/（favicon 與 45 款圖案 SVG + blank.svg）
+#    vercel.json（部署設定）
+# ============================================================
