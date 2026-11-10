@@ -196,6 +196,35 @@ try {
   check('PNG 隱形水印讀得返（v2）', wm.found && wm.version === 'v2' && wm.unit === 'ZTNG',
     `${wm.payload || '(none)'} · confidence ${Number(wm.confidence).toFixed(2)}`);
 
+  // 失敗時要睇得到係「codec 問題」定「檔案問題」
+  if (!wm.found) {
+    const diag = await page.evaluate(async src => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, c.width, c.height);
+      const hex = str => Array.from(str.slice(0, 12), ch => ch.charCodeAt(0).toString(16)).join(' ');
+      const file = window.wmDecode({ data: d.data, width: c.width, height: c.height });
+      const mc = document.getElementById('mainCanvas');
+      const mctx = mc.getContext('2d', { willReadFrequently: true });
+      const md = mctx.getImageData(0, 0, mc.width, mc.height);
+      const tmp = new Uint8ClampedArray(md.data);
+      window.wmEmbed({ data: tmp, width: mc.width, height: mc.height }, 'SCOUTSYSTEM|v2|ZTNG|20260101|ABCD');
+      const codec = window.wmDecode({ data: tmp, width: mc.width, height: mc.height });
+      return {
+        file: { w: c.width, h: c.height, blocks: file.blocks, conf: +file.confidence.toFixed(3), hex: hex(file.payload) },
+        canvas: { w: mc.width, h: mc.height },
+        codec: { found: codec.found, payload: codec.payload, conf: +codec.confidence.toFixed(3) },
+        px: [d.data[0], d.data[1], d.data[2], d.data[3], md.data[0], md.data[1], md.data[2]]
+      };
+    }, dataUrl);
+    console.log('::notice title=e2e-diag::' + JSON.stringify(diag));
+  }
+
   /* ---------- 作品集（IndexedDB） ---------- */
   await page.click('#galleryBtn');
   await page.waitForSelector('#galleryModal.active', { timeout: 5000 });
