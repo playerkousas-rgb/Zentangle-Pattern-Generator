@@ -3,13 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>禪繞畫工具 - Zentangle Generator</title>
+  <title>禪繞畫工具｜上傳相片自動生成 Zentangle 圖案（45 款）</title>
+
+  <!-- ===== 基本 SEO／分享（scripts/seo_check 全綠）===== -->
+  <meta name="description" content="免費線上禪繞畫產生器：上傳相片即自動去背、按影像結構分區，再填入 45 款禪繞（Zentangle）圖案。可調密度、線條、深淺，支援列印 A4 作品、Zendala 圓磚與作品集。純前端，圖片不離開你的裝置。">
+  <meta name="keywords" content="禪繞畫,Zentangle,圖案產生器,自動分區,Zendala,填色稿,列印,pattern generator">
+  <meta name="author" content="Scout System">
+  <meta name="copyright" content="© SCOUT SYSTEM 2026. All rights reserved.">
+  <meta name="app-version" content="v1.1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#02133E">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="canonical" href="https://zentangle-pattern-generator.vercel.app/">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="禪繞畫工具 Zentangle Pattern Generator">
+  <meta property="og:title" content="禪繞畫工具｜相片自動變 45 款禪繞圖案">
+  <meta property="og:description" content="上傳相片 → 自動去背與分區 → 填入 45 款禪繞圖案。可調密度／線條／深淺，支援列印與作品集；所有運算在你部機完成。">
+  <meta property="og:url" content="https://zentangle-pattern-generator.vercel.app/">
+  <meta property="og:image" content="https://zentangle-pattern-generator.vercel.app/icons/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="白色禪繞畫磚放在深藍色夜空背景">
+  <meta property="og:locale" content="zh_TW">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- ===== G11 圖標：9 個 PNG／ICO，唔用 SVG（docs/33）===== -->
+  <link rel="icon" href="/icons/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
-  <script type="module">
-    import { inject } from '@vercel/analytics';
-    inject();
+
+  <!-- Vercel Web Analytics：官方零依賴 snippet。
+       刻意唔用 @vercel/analytics npm 套件 → package.json 執行期依賴維持 0 個（S3）。 -->
+  <script defer src="/_vercel/insights/script.js"></script>
+
+  <!-- 結構化資料：Google／AI 搜尋最便宜嘅加分位 -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "禪繞畫工具 — Zentangle Pattern Generator",
+    "url": "https://zentangle-pattern-generator.vercel.app/",
+    "description": "上傳相片自動提取主體、智能分區，再填入 45 款禪繞圖案；可列印與儲存作品集，所有運算在瀏覽器完成。",
+    "applicationCategory": "DesignApplication",
+    "operatingSystem": "Any",
+    "browserRequirements": "需要支援 Canvas 2D 的現代瀏覽器",
+    "inLanguage": "zh-Hant",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "HKD" },
+    "featureList": [
+      "上傳／拍照／貼上／拖放匯入圖片",
+      "自動去背與主體提取",
+      "邊緣感知分區與 Zendala 放射分區",
+      "45 款禪繞圖案與圖鑑步驟教學",
+      "列印 A4 作品、圖案參考表、空白畫磚",
+      "IndexedDB 本地作品集"
+    ],
+    "screenshot": "https://zentangle-pattern-generator.vercel.app/icons/og-image.png"
+  }
   </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -50,6 +109,15 @@
     .guide-box li { margin-bottom: 3px; }
     .small-note { color: rgba(255,255,255,.45); font-size: 11px; line-height: 1.45; }
     #previewContainer { min-height: 350px; }
+
+    /* ===== 無障礙 / 鍵盤 ===== */
+    .skip-link { position: absolute; left: -9999px; top: 0; z-index: 400; background: #00d4ff; color: #000; font-weight: 700; padding: 10px 16px; border-radius: 0 0 10px 0; }
+    .skip-link:focus { left: 0; }
+    :focus-visible { outline: 3px solid #00d4ff; outline-offset: 2px; }
+    .noscript-banner { background: #ff6b6b; color: #210000; font-weight: 700; text-align: center; padding: 12px 16px; }
+    body.modal-open { overflow: hidden; }
+    .pattern-item:focus-visible, .atlas-item:focus-visible, .upload-zone:focus-visible { outline: 3px solid #00d4ff; outline-offset: 2px; }
+    @media print { .mobile-action-bar, #toastContainer { display: none !important; } }
 
     /* ===== 手機友善 / Mobile friendly ===== */
     html { -webkit-text-size-adjust: 100%; }
@@ -130,6 +198,8 @@
   </style>
 </head>
 <body style="background: #02133E;">
+  <a href="#main" class="skip-link">跳去主要內容</a>
+  <noscript><div class="noscript-banner">本工具需要 JavaScript 才能去背、分區與繪圖，請開啟 JavaScript 後重新載入。</div></noscript>
   <div class="min-h-screen p-4 md:p-8">
     <header class="max-w-7xl mx-auto mb-6">
       <div class="flex items-center justify-between flex-wrap gap-4">
@@ -158,12 +228,12 @@
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto">
+    <main id="main" tabindex="-1" class="max-w-7xl mx-auto">
       <div class="grid lg:grid-cols-3 gap-6 main-grid">
         <div class="lg:col-span-1 space-y-5 col-left">
           <div class="glass-card p-5 card-upload">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">上傳圖片</h2>
-            <div id="uploadZone" class="upload-zone p-6 text-center">
+            <div id="uploadZone" class="upload-zone p-6 text-center" role="button" tabindex="0" aria-label="上傳圖片：點擊、拖放或貼上（Ctrl+V）">
               <input type="file" id="fileInput" accept="image/*" style="display: none;">
               <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
               <svg class="w-10 h-10 mx-auto mb-3" style="color: rgba(255,255,255,0.4);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
@@ -195,7 +265,7 @@
 
           <div class="glass-card p-5 card-patterns">
             <h2 class="text-base font-semibold mb-3" style="color: #00d4ff;">選擇圖案 (<span id="selectedCount">0</span>/46)</h2>
-            <div id="patternGrid" class="pattern-grid"></div>
+            <div id="patternGrid" class="pattern-grid" role="group" aria-label="選擇圖案（可多選）"></div>
             <div class="mt-3 flex gap-2 flex-wrap">
               <button id="selectAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">全選</button>
               <button id="clearAllBtn" class="btn-secondary flex-1 py-2 rounded-lg text-xs">清除</button>
@@ -221,19 +291,19 @@
               </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">分區數量</label><span id="regionValue" class="text-xs" style="color: #00d4ff;">8</span></div>
-                <input type="range" id="regionSlider" min="2" max="16" value="8">
+                <input type="range" id="regionSlider" min="2" max="16" value="8" aria-label="分區數量">
               </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">圖案大小</label><span id="densityValue" class="text-xs" style="color: #00d4ff;">52</span></div>
-                <input type="range" id="densitySlider" min="18" max="120" value="52">
+                <input type="range" id="densitySlider" min="18" max="120" value="52" aria-label="圖案大小">
               </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">線條粗細</label><span id="strokeValue" class="text-xs" style="color: #00d4ff;">1.2px</span></div>
-                <input type="range" id="strokeSlider" min="6" max="24" value="12">
+                <input type="range" id="strokeSlider" min="6" max="24" value="12" aria-label="線條粗細">
               </div>
               <div>
                 <div class="flex justify-between mb-1"><label class="text-xs" style="color: rgba(255,255,255,0.6);">背景容差 / 邊緣敏感度</label><span id="thresholdValue" class="text-xs" style="color: #00d4ff;">70</span></div>
-                <input type="range" id="thresholdSlider" min="25" max="160" value="70">
+                <input type="range" id="thresholdSlider" min="25" max="160" value="70" aria-label="背景容差與邊緣敏感度">
               </div>
               <div class="flex items-center gap-2">
                 <input type="checkbox" id="addShading" checked class="w-4 h-4">
@@ -289,7 +359,7 @@
               </div>
               <canvas id="mainCanvas" style="display: none;"></canvas>
               <canvas id="regionCanvas" style="display: none; position: absolute; top: 0; left: 0;"></canvas>
-              <div id="processingOverlay" class="processing-overlay" style="display: none;">
+              <div id="processingOverlay" class="processing-overlay" style="display: none;" role="status" aria-live="polite" aria-label="處理中">
                 <div class="text-center">
                   <div class="spinner mx-auto mb-3"></div>
                   <p style="color: #333; font-size: 14px;" id="processingText">處理中...</p>
@@ -319,14 +389,15 @@
     </main>
 
     <footer class="max-w-7xl mx-auto mt-8 text-center">
-      <p class="footer-text">© 2026 Scout System. All Rights Reserved.</p>
+      <p class="footer-text">© SCOUT SYSTEM 2026. All rights reserved. · <span id="appVersion">v1.1.0</span></p>
+      <p class="footer-text" style="margin-top: 6px; max-width: 640px; margin-left: auto; margin-right: auto;">所有運算（去背、分區、繪圖）都在你的瀏覽器完成，圖片不會上傳到任何伺服器。<br>Zentangle® 是 Rick Roberts 與 Maria Thomas 的註冊商標；本工具為獨立創作，與其無任何隸屬或授權關係。</p>
     </footer>
   </div>
 
   <div id="toastContainer" aria-live="polite"></div>
 
   <div id="printMenu" class="modal-backdrop">
-    <div class="modal-card" style="max-width: 380px;">
+    <div class="modal-card" style="max-width: 380px;" role="dialog" aria-modal="true" aria-label="列印選單">
       <div class="modal-head"><h3 class="modal-title">🖨️ 列印</h3><button class="modal-x" data-close>✕</button></div>
       <button class="modal-menu-btn" data-print="artwork">🎨 <span><b>作品</b> — A4 全頁，直接填色</span></button>
       <button class="modal-menu-btn" data-print="sheet">📋 <span><b>圖案參考表</b> — 45 款一頁</span></button>
@@ -337,7 +408,7 @@
   </div>
 
   <div id="guideModal" class="modal-backdrop">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="禪繞畫新手指南">
       <div class="modal-head"><h3 class="modal-title">❓ 禪繞畫新手指南</h3><button class="modal-x" data-close>✕</button></div>
       <h4 class="guide-h4">咩係禪繞畫？</h4>
       <p class="guide-p">禪繞畫（Zentangle®）由 Rick Roberts 同 Maria Thomas 創立：用最簡單嘅點、線、面，一筆一筆畫出結構化圖案。過程專注、放鬆，而且<b style="color:#7ee7ff">冇嘢係「錯」</b>——官方文化甚至唔用橡皮擦，所有意外筆觸都可以變成圖案嘅一部分。</p>
@@ -365,7 +436,7 @@
   </div>
 
   <div id="atlasModal" class="modal-backdrop">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="圖案圖鑑">
       <div class="modal-head"><h3 class="modal-title">📖 圖案圖鑑（45 款）</h3><button class="modal-x" data-close>✕</button></div>
       <div class="flex gap-3 items-center flex-wrap" style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 12px;">
         <img id="atlasMainImg" src="/patterns/1.svg" alt="" style="width: 132px; height: 132px; background: #fff; border-radius: 10px; object-fit: contain; padding: 6px; flex: none;">
@@ -392,7 +463,7 @@
   </div>
 
   <div id="galleryModal" class="modal-backdrop">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="作品集相簿">
       <div class="modal-head">
         <h3 class="modal-title">🖼 作品集相簿</h3>
         <div class="flex gap-2 items-center">
@@ -407,7 +478,7 @@
   </div>
 
   <div id="lightbox" class="modal-backdrop">
-    <div class="modal-card" style="max-width: 520px;">
+    <div class="modal-card" style="max-width: 520px;" role="dialog" aria-modal="true" aria-label="作品放大預覽">
       <div class="modal-head"><h3 class="modal-title" id="lbTitle">作品</h3><button class="modal-x" data-close>✕</button></div>
       <img id="lbImg" alt="作品放大圖" style="width: 100%; border-radius: 10px; background: #fff;">
       <div class="flex gap-2 mt-3">
@@ -438,6 +509,11 @@
   </div>
 
 <script>
+// ===== 雙版號 V1/V2：唯一真理 =====
+// 改版時四處一齊改：① 本常數 ② <meta name="app-version"> ③ 頁尾 #appVersion ④ package.json version
+// （檔名例外：Vercel 入口必須叫 index.html，見 README「版號」一節）
+const APP_VERSION = 'v1.1.0';
+
 class ZentangleGenerator {
   constructor() {
     this.mainCanvas = document.getElementById('mainCanvas');
@@ -489,6 +565,8 @@ class ZentangleGenerator {
     this.bindEvents();
     this.generatePatternGrid();
     this.updateGalleryBadge(); // 重新整理頁面後，相簿計數徽章也要立即反映既有作品數
+    const verEl = document.getElementById('appVersion');
+    if (verEl) verEl.textContent = APP_VERSION;
   }
 
   el(id) { return document.getElementById(id); }
@@ -510,6 +588,7 @@ class ZentangleGenerator {
     const uz = this.el('uploadZone');
     const fi = this.el('fileInput');
     uz.onclick = () => fi.click();
+    uz.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } };
     uz.ondragover = e => { e.preventDefault(); uz.classList.add('dragover'); };
     uz.ondragleave = () => uz.classList.remove('dragover');
     uz.ondrop = e => { e.preventDefault(); e.stopPropagation(); uz.classList.remove('dragover'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); };
@@ -614,9 +693,14 @@ class ZentangleGenerator {
       const item = document.createElement('div');
       item.className = `pattern-item ${this.selectedPatterns.has(i) ? 'selected' : ''} ${!pattern.isBlank && this.favorites.has(i) ? 'favorite' : ''}`;
       item.title = pattern.name;
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', pattern.name);
+      item.setAttribute('aria-pressed', this.selectedPatterns.has(i) ? 'true' : 'false');
       const star = pattern.isBlank ? '' : `<button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}" title="最愛">${this.favorites.has(i) ? '★' : '☆'}</button>`;
-      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}">`}<div class="check-mark">✓</div>${star}`;
+      item.innerHTML = `${pattern.isBlank ? '<div class="w-full h-full bg-white"></div>' : `<img src="${pattern.url}" class="w-full h-full object-contain p-1" alt="${pattern.name}" loading="lazy" onerror="this.style.visibility='hidden'">`}<div class="check-mark">✓</div>${star}`;
       item.onclick = () => this.togglePattern(i);
+      item.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.togglePattern(i); } };
       const st = item.querySelector('.fav-star');
       if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
       grid.appendChild(item);
@@ -627,34 +711,43 @@ class ZentangleGenerator {
 
   togglePattern(i) {
     if (this.selectedPatterns.has(i)) this.selectedPatterns.delete(i); else this.selectedPatterns.add(i);
-    document.querySelectorAll('.pattern-item').forEach((el, idx) => el.classList.toggle('selected', this.selectedPatterns.has(idx)));
-    this.updateCount();
+    this.syncPatternSelection();
     if (this.originalImage && this.selectedPatterns.size > 0) { this.assignPatterns(); this.generate(); }
   }
 
   updateCount() { this.el('selectedCount').textContent = this.selectedPatterns.size; }
 
+  // 畫面上嘅選取狀態 + aria-pressed 一次過同步（避免兩邊唔一致）
+  syncPatternSelection() {
+    document.querySelectorAll('.pattern-item').forEach((el, idx) => {
+      const on = this.selectedPatterns.has(idx);
+      el.classList.toggle('selected', on);
+      el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    this.updateCount();
+  }
+
   selectAll(includeBlank = true) {
     this.selectedPatterns.clear();
     this.patterns.forEach((_, i) => { if (includeBlank || i !== 0) this.selectedPatterns.add(i); });
-    document.querySelectorAll('.pattern-item').forEach((el, i) => el.classList.toggle('selected', this.selectedPatterns.has(i)));
-    this.updateCount();
+    this.syncPatternSelection();
     if (this.originalImage) { this.assignPatterns(); this.generate(); }
   }
 
   clearAll() {
     this.selectedPatterns.clear();
-    document.querySelectorAll('.pattern-item').forEach(el => el.classList.remove('selected'));
-    this.updateCount();
+    this.syncPatternSelection();
   }
 
   load(file) {
     if (!file) return;
     if (!file.type || !file.type.startsWith('image/')) { this.toast('請選擇圖片檔案（PNG / JPG / WebP）', false); return; }
+    if (file.size > 30 * 1024 * 1024) { this.toast('圖片大過 30MB，請先壓縮或縮細再上傳', false); return; }
     const reader = new FileReader();
     reader.onerror = () => this.toast('圖片讀取失敗，請再試一次', false);
     reader.onload = e => {
       const img = new Image();
+      img.onerror = () => this.toast('讀唔到呢張圖（格式可能唔支援），請轉做 PNG / JPG 再試', false);
       img.onload = () => {
         this.originalImage = img;
         this.partitionSalt = Math.random() * 10000;
@@ -700,25 +793,32 @@ class ZentangleGenerator {
     this.el('processingOverlay').style.display = 'flex';
     this.el('placeholderText').style.display = 'none';
     this.mainCanvas.style.display = 'block';
-    await this.sleep(20);
+    try {
+      await this.sleep(20);
 
-    if (reanalyse || !this.fillMask || this.fillMask.length !== w * h) {
-      this.el('processingText').textContent = '智能提取主體與透明背景...';
-      await this.sleep(10);
-      this.extractMasks(w, h);
-      this.el('processingText').textContent = '提取內部特徵線...';
-      await this.sleep(10);
-      this.lineMask = this.extractLineMask(w, h);
-      this.el('processingText').textContent = this.settings.regionShape === 'zendala' ? '建立 Zendala 放射分區...' : '建立高質分區...';
-      await this.sleep(10);
-      this.regions = this.settings.regionShape === 'zendala' ? this.segmentZendala(w, h) : this.segment(w, h);
-      this.assignPatterns(randomizeAssign);
-      this.drawRegionPreview(w, h);
+      if (reanalyse || !this.fillMask || this.fillMask.length !== w * h) {
+        this.el('processingText').textContent = '智能提取主體與透明背景...';
+        await this.sleep(10);
+        this.extractMasks(w, h);
+        this.el('processingText').textContent = '提取內部特徵線...';
+        await this.sleep(10);
+        this.lineMask = this.extractLineMask(w, h);
+        this.el('processingText').textContent = this.settings.regionShape === 'zendala' ? '建立 Zendala 放射分區...' : '建立高質分區...';
+        await this.sleep(10);
+        this.regions = this.settings.regionShape === 'zendala' ? this.segmentZendala(w, h) : this.segment(w, h);
+        this.assignPatterns(randomizeAssign);
+        this.drawRegionPreview(w, h);
+      }
+
+      this.el('processingText').textContent = '套用禪繞圖案...';
+      await this.render(w, h);
+    } catch (err) {
+      // F（防呆）：任何一步爆錯都要收遮罩 + 講清楚，唔好靜靜卡住「處理中」
+      console.error('[zentangle] generate failed:', err);
+      this.toast('生成失敗：' + ((err && err.message) || '未知錯誤') + '。可試下調低分區數量，或換一張較細嘅圖。', false);
+    } finally {
+      this.el('processingOverlay').style.display = 'none';
     }
-
-    this.el('processingText').textContent = '套用禪繞圖案...';
-    await this.render(w, h);
-    this.el('processingOverlay').style.display = 'none';
   }
 
   extractMasks(w, h) {
@@ -1456,7 +1556,57 @@ class ZentangleGenerator {
     this.toast('已清除圖片，可重新上傳');
   }
 
-  toPNGBlob() { return new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png')); }
+  // W（版權）：匯出 PNG 寫入 tEXt 中繼資料（Copyright／Software／Source），
+  // 圖睇落完全一樣，但檔案本身帶得走版權紀錄。用「檢查器」或 exiftool 睇得到。
+  async toPNGBlob() {
+    const blob = await new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png'));
+    if (!blob) return null;
+    try {
+      const raw = new Uint8Array(await blob.arrayBuffer());
+      const texts = {
+        Copyright: '© SCOUT SYSTEM 2026. All rights reserved.',
+        Software: `Zentangle Pattern Generator ${APP_VERSION}`,
+        Source: 'https://zentangle-pattern-generator.vercel.app/'
+      };
+      const enc = new TextEncoder();
+      const chunks = Object.entries(texts).map(([k, v]) => {
+        const data = enc.encode(`${k}\0${v}`);
+        const type = enc.encode('tEXt');
+        const body = new Uint8Array(type.length + data.length);
+        body.set(type, 0); body.set(data, type.length);
+        const out = new Uint8Array(4 + body.length + 4);
+        new DataView(out.buffer).setUint32(0, data.length);
+        out.set(body, 4);
+        new DataView(out.buffer).setUint32(4 + body.length, this.crc32(body));
+        return out;
+      });
+      // PNG = 8 bytes signature + IHDR（8+4+13+4 = 25 bytes）
+      const at = 8 + 25;
+      const merged = new Uint8Array(raw.length + chunks.reduce((n, c) => n + c.length, 0));
+      merged.set(raw.subarray(0, at), 0);
+      let off = at;
+      for (const c of chunks) { merged.set(c, off); off += c.length; }
+      merged.set(raw.subarray(at), off);
+      return new Blob([merged], { type: 'image/png' });
+    } catch (err) {
+      console.warn('[zentangle] PNG metadata skipped:', err);
+      return blob; // 加唔到中繼資料都唔好阻住用戶下載
+    }
+  }
+
+  crc32(bytes) {
+    if (!this._crcTable) {
+      this._crcTable = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        this._crcTable[n] = c >>> 0;
+      }
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) crc = this._crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
 
   // ===== 列印 =====
   // 用隱藏 iframe 生成獨立列印文件：只印作品／圖案表，唔會印到 App 介面。
@@ -1494,9 +1644,10 @@ class ZentangleGenerator {
       this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>禪繞畫 Zentangle</title><style>
         @page { size: A4 ${landscape ? 'landscape' : 'portrait'}; margin: 10mm; }
         html, body { margin: 0; padding: 0; background: #fff; }
-        body { min-height: 96vh; display: flex; align-items: center; justify-content: center; }
-        img { max-width: 100%; max-height: 96vh; }
-      </style></head><body><img src="${dataUrl}" alt="Zentangle artwork"></body></html>`);
+        body { min-height: 96vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        img { max-width: 100%; max-height: 92vh; }
+        .stamp { margin-top: 3mm; font-size: 8px; color: #999; letter-spacing: .3px; }
+      </style></head><body><img src="${dataUrl}" alt="Zentangle artwork"><div class="stamp">© SCOUT SYSTEM 2026 · ${APP_VERSION} · zentangle-pattern-generator.vercel.app</div></body></html>`);
       this.toast('已開啟列印');
     } catch (err) {
       this.toast('列印失敗，請再試一次', false);
@@ -1512,7 +1663,7 @@ class ZentangleGenerator {
       this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Zentangle 圖案參考表</title><style>
         @page { size: A4 portrait; margin: 10mm; }
         html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
-        h1 { font-size: 15px; text-align: center; margin: 0 0 8px; }
+        .doc-title { font-size: 15px; font-weight: 700; text-align: center; margin: 0 0 8px; }
         .sub { font-size: 9px; color: #666; text-align: center; margin-bottom: 10px; }
         .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4mm; }
         .cell { border: 0.4mm solid #bbb; border-radius: 2mm; padding: 2mm; text-align: center; }
@@ -1520,9 +1671,10 @@ class ZentangleGenerator {
         .imgbox img { max-width: 100%; max-height: 100%; }
         .cell span { display: block; font-size: 9px; color: #444; margin-top: 1.5mm; }
       </style></head><body>
-        <h1>Zentangle 圖案參考表 · Scout System</h1>
+        <div class="doc-title">Zentangle 圖案參考表 · Scout System</div>
         <p class="sub">共 45 款 · 配合「禪繞畫工具」使用</p>
         <div class="grid">${cells}</div>
+        <p class="sub" style="margin-top:10px">© SCOUT SYSTEM 2026 · ${APP_VERSION} · zentangle-pattern-generator.vercel.app</p>
       </body></html>`);
       this.toast('已開啟圖案參考表列印');
     } catch (err) {
@@ -1569,10 +1721,26 @@ class ZentangleGenerator {
   }
 
   // ===== 彈窗 =====
-  openModal(id) { this.el(id).classList.add('active'); }
+  openModal(id) {
+    const mb = this.el(id);
+    if (!mb) return;
+    this._lastFocus = document.activeElement;
+    mb.classList.add('active');
+    document.body.classList.add('modal-open');
+    // 焦點移入彈窗（螢幕閱讀器／鍵盤唔會迷失喺背景）
+    const first = mb.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (first) setTimeout(() => { try { first.focus(); } catch (e) {} }, 30);
+  }
   closeModal(id) {
-    this.el(id).classList.remove('active');
+    const mb = this.el(id);
+    if (!mb) return;
+    mb.classList.remove('active');
+    if (!document.querySelector('.modal-backdrop.active')) document.body.classList.remove('modal-open');
     if (id === 'lightbox' && this._lbUrl) { URL.revokeObjectURL(this._lbUrl); this._lbUrl = null; }
+    if (this._lastFocus && typeof this._lastFocus.focus === 'function') {
+      try { this._lastFocus.focus(); } catch (e) {}
+      this._lastFocus = null;
+    }
   }
 
   // ===== 最愛 =====
@@ -1615,8 +1783,7 @@ class ZentangleGenerator {
     const picks = [];
     while (picks.length < 6 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
     this.selectedPatterns = new Set(picks);
-    document.querySelectorAll('.pattern-item').forEach((el, idx) => el.classList.toggle('selected', this.selectedPatterns.has(idx)));
-    this.updateCount();
+    this.syncPatternSelection();
     if (this.originalImage) { this.assignPatterns(); this.generate(); }
     this.toast('🎲 隨機揀咗 6 款圖案');
   }
@@ -1637,8 +1804,12 @@ class ZentangleGenerator {
       const cell = document.createElement('div');
       cell.className = 'atlas-item' + (i === this._atlasCur ? ' current' : '');
       cell.dataset.i = i;
-      cell.innerHTML = `<img src="${p.url}" alt="${p.name}"><button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}">${this.favorites.has(i) ? '★' : '☆'}</button>`;
+      cell.setAttribute('role', 'button');
+      cell.setAttribute('tabindex', '0');
+      cell.setAttribute('aria-label', p.name);
+      cell.innerHTML = `<img src="${p.url}" alt="${p.name}" loading="lazy" onerror="this.style.visibility='hidden'"><button type="button" class="fav-star ${this.favorites.has(i) ? 'on' : ''}" aria-label="加入或移除最愛">${this.favorites.has(i) ? '★' : '☆'}</button>`;
       cell.onclick = () => { this._atlasCur = i; this.renderAtlas(); this.renderAtlasMain(i); };
+      cell.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this._atlasCur = i; this.renderAtlas(); this.renderAtlasMain(i); } };
       const st = cell.querySelector('.fav-star');
       if (st) st.onclick = e => { e.stopPropagation(); this.toggleFav(i); };
       grid.appendChild(cell);
@@ -1683,13 +1854,14 @@ class ZentangleGenerator {
     this.printHTML(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${cfg.label}</title><style>
       @page { size: A4 portrait; margin: 6mm; }
       html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif; }
-      h1 { font-size: 11px; text-align: center; margin: 0 0 4mm; color: #444; font-weight: normal; }
+      .doc-title { font-size: 11px; text-align: center; margin: 0 0 4mm; color: #444; font-weight: normal; }
       .sheet { display: grid; grid-template-columns: repeat(${cfg.cols}, auto); gap: 5mm; justify-content: center; }
       .tile { position: relative; border: 0.35mm solid #aaa; }
       .tile span { position: absolute; right: 2mm; bottom: 1mm; font-size: 8px; color: #bbb; }
     </style></head><body>
-      <h1>${cfg.label} · Scout System</h1>
+      <div class="doc-title">${cfg.label} · Scout System</div>
       <div class="sheet">${cells}</div>
+      <p class="doc-title" style="margin:4mm 0 0">© SCOUT SYSTEM 2026 · ${APP_VERSION}</p>
     </body></html>`);
     this.toast('已開啟空白畫磚列印');
   }
@@ -1812,6 +1984,7 @@ class ZentangleGenerator {
   async loadSteps(i) {
     const p = this.patterns[i];
     const imgs = [this.el('stepImg1'), this.el('stepImg2'), this.el('stepImg3')];
+    imgs.forEach(im => { if (!im.onerror) im.onerror = () => { im.style.visibility = 'hidden'; }; });
     if (!p || p.isBlank) { imgs.forEach(im => { im.src = '/patterns/blank.svg'; im.style.opacity = '1'; }); return; }
     imgs.forEach(im => { im.style.opacity = '.3'; });
     try {

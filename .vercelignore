@@ -48,6 +48,14 @@ eslint.config.js
 #    package.json / package-lock.json（安裝依賴）
 #    vite.config.ts / tsconfig*.json（npm run build 需要 tsc -b）
 #    index.html（應用程式本體）
-#    public/（favicon 與 45 款圖案 SVG + blank.svg）
+#    public/（icons 9 個圖標、manifest、robots、sitemap、45 款圖案 SVG + blank.svg）
 #    vercel.json（部署設定）
 # ============================================================
+
+# --- 開發／審查工具（部署執行時不需要，2026-11 加固時加入）---
+scripts/
+docs/
+design/
+.github/
+CHANGELOG.md
+LICENSE

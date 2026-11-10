@@ -1,15 +1,29 @@
 {
   "name": "zentangle-pattern-generator",
+  "version": "1.1.0",
   "private": true,
-  "version": "1.0.0",
   "type": "module",
   "description": "禪繞畫圖案產生器：上傳圖片，自動分區並填入 45 款禪繞圖案（純前端單頁工具）",
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://zentangle-pattern-generator.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/playerkousas-rgb/Zentangle-Pattern-Generator.git"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "check": "tsc -b",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit": "node scripts/app_check_v1.0.mjs",
+    "audit:html": "node scripts/audit_single_html_v1.0.mjs index.html",
+    "seo": "node scripts/seo_check_v1.0.mjs index.html",
+    "icons": "node scripts/build_icons.mjs",
+    "verify": "npm run check && npm run lint && npm run build && npm run audit"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -18,9 +32,6 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1"
-  },
-  "dependencies": {
-    "@vercel/analytics": "^2.0.1"
+    "vite": "^7.3.8"
   }
 }

@@ -25,3 +25,7 @@ dist-ssr
 # 測試上傳 / 暫存
 uploads/
 public/uploads/
+
+# 審計輸出（本機／CI artifact）
+app-check.json
+health.json
