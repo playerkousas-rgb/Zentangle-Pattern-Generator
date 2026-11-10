@@ -1,0 +1,91 @@
+name: CI
+
+# G9／F（防呆）：錯誤喺 PR 就擋，唔好等 deploy 之後才發現。
+# A16：所有外部 action 一律釘 commit SHA，唔用 floating tag。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: check · lint · build · audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝依賴（依 lockfile）
+        run: npm ci
+
+      - name: TypeScript 型別檢查
+        run: npm run check
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: 生產建置
+        run: npm run build
+
+      - name: 交付前閘門（HTML 審計 ＋ SEO ＋ 圖標 ＋ 版號 ＋ 體積）
+        run: node scripts/app_check_v1.0.mjs
+
+      - name: 機讀審計報告
+        if: always()
+        run: node scripts/app_check_v1.0.mjs --json | tee app-check.json || true
+
+      - name: Repo 體檢（secret／大檔／placeholder）
+        run: node scripts/repo_health_v1.0.mjs . --json || true
+
+      - name: 體積預算（dist ≤ 1MB、圖標 ≤ 260KB）
+        run: |
+          DIST=$(du -sb dist | cut -f1)
+          ICONS=$(du -sb public/icons | cut -f1)
+          echo "dist=$((DIST/1024))KB icons=$((ICONS/1024))KB"
+          test "$DIST" -lt 1048576
+          test "$ICONS" -lt 266240
+
+  e2e:
+    name: e2e（真 Chromium ＋ 截圖）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安裝依賴（依 lockfile）
+        run: npm ci
+
+      - name: 生產建置
+        run: npm run build
+
+      - name: 端到端實測（上載 → 生成 → SVG／PNG 匯出 → 水印 → 作品集 → 截圖）
+        run: npm run test:e2e
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+
+      - name: 上傳截圖與下載檔（人手視覺回歸）
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: e2e-artifacts
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14

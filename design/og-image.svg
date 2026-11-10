@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Open Graph 分享圖 1200×630：深藍夜空 ＋ 白色畫磚禪繞 ＋ 英文標題。
+     og:image 必須用絕對網址引用（見 index.html <head>）。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#02133E"/>
+      <stop offset="0.6" stop-color="#052255"/>
+      <stop offset="1" stop-color="#0A2C66"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.14" cy="0.92" r="0.7">
+      <stop offset="0" stop-color="#7B61FF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#7B61FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00D4FF"/>
+      <stop offset="1" stop-color="#7B61FF"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- 左：畫磚主體 -->
+  <g transform="translate(84 108) rotate(-7 210 210)">
+    <rect x="0" y="0" width="420" height="420" rx="18" fill="#F7F5EF"/>
+    <rect x="40" y="40" width="340" height="340" fill="none" stroke="#14131A" stroke-width="7"/>
+    <g fill="none" stroke="#14131A" stroke-width="9" stroke-linecap="round">
+      <path d="M40 160 A 120 120 0 0 1 160 40"/>
+      <path d="M40 120 A 80 80 0 0 1 120 40"/>
+    </g>
+    <g stroke="#14131A" stroke-width="8" stroke-linecap="round">
+      <path d="M220 66 L 380 66"/>
+      <path d="M220 102 L 380 102"/>
+      <path d="M250 138 L 380 138"/>
+      <path d="M280 174 L 380 174"/>
+    </g>
+    <g fill="none" stroke="#14131A" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M62 268 L 100 238 L 138 268 L 176 238 L 214 268"/>
+      <path d="M62 306 L 100 276 L 138 306 L 176 276 L 214 306"/>
+    </g>
+    <circle cx="210" cy="210" r="18" fill="#02133E"/>
+    <circle cx="210" cy="210" r="30" fill="none" stroke="url(#cyan)" stroke-width="8"/>
+  </g>
+  <circle cx="470" cy="140" r="52" fill="none" stroke="#00D4FF" stroke-width="16"/>
+
+  <!-- 右：文字（拉丁字，確保任何平台預覽都唔會豆腐字） -->
+  <g fill="#FFFFFF" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+    <text x="588" y="232" font-size="72" font-weight="bold" letter-spacing="2">ZENTANGLE</text>
+    <text x="590" y="296" font-size="42" font-weight="bold" fill="#00D4FF" letter-spacing="1">Pattern Generator</text>
+    <text x="590" y="368" font-size="25" fill="#C9D6EE">45 tangle patterns · auto subject extraction</text>
+    <text x="590" y="406" font-size="25" fill="#C9D6EE">smart regions · runs 100% in your browser</text>
+  </g>
+  <rect x="590" y="446" width="120" height="4" rx="2" fill="url(#cyan)"/>
+  <text x="590" y="500" font-size="21" fill="#7FA6D9" font-family="DejaVu Sans, Helvetica, Arial, sans-serif">zentangle-pattern-generator.vercel.app</text>
+</svg>
