@@ -1,0 +1,28 @@
+Copyright (c) 2026 playerkousas-rgb (Scout System). All rights reserved.
+
+本專案（「禪繞畫工具 — Zentangle Pattern Generator」）包括但不限於
+index.html 內的程式碼與文案、public/patterns/ 的 45 款圖案 SVG（含 blank.svg）、
+public/icons/ 的九個圖標、design/ 的母圖，以及本倉庫內所有文件，
+均受著作權法保護。
+
+未經著作權人書面授權，不得複製、修改、改作、散布、公開傳輸、
+再授權或作商業使用。個人學習、離線自用及非商業的教學引用，
+請保留出處與本授權聲明。
+
+---------------------------------------------------------------------------
+第三方聲明
+---------------------------------------------------------------------------
+1. Zentangle® 為 Rick Roberts 與 Maria Thomas 的註冊商標。
+   本工具為獨立創作，與 Zentangle, Inc.、Rick Roberts 或 Maria Thomas
+   並無任何隸屬、贊助或授權關係；「禪繞畫」一詞在本專案中作技法描述之用。
+
+2. scripts/audit_single_html_v1.0.mjs、scripts/seo_check_v1.0.mjs、
+   scripts/repo_health_v1.0.mjs 抄自同一位作者的規範倉庫
+   playerkousas-rgb/readme，版權同樣歸屬本專案著作權人。
+
+3. 介面使用的 Tailwind CSS CDN（cdn.tailwindcss.com）與
+   Google Fonts（Noto Sans TC）由各自的服務提供者依其條款授權，
+   並未隨本專案打包或再散布。
+
+4. Zentangle 圖案靈感源自公開的禪繞畫傳統；本專案 45 款 SVG
+   為原創繪製，未抄襲任何受保護的官方 tangle 圖樣。
