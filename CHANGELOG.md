@@ -18,6 +18,12 @@
   CI 新增 `e2e` job 同 artifact。
 - **`AGENTS.md`／`SCOPE.md`／`tests/`**：施工邊界、做唔做清單、單元測試。
 
+### 修正
+- **水印喺白底圖上失效**（e2e 捉到）：白色（255）冇 headroom，向上推係數會即刻 clip，
+  令大片背景全部讀成 bit 0 —— 匯出嘅 PNG 解碼出嚟變晒 NUL。改為「模擬 → 迭代反解 delta」：
+  逐個區塊試正負兩邊嘅 QIM 格點，模擬 clamp 之後嘅實際係數，揀落點最準、溢出最少嘅一個。
+  加咗白底線稿 unit test（PSNR ≥ 35dB、單點 ≤ 24 灰階、payload round-trip）。
+
 ### 改進
 - **Tailwind 改為建置期編譯**：`cdn.tailwindcss.com`（~400 KB runtime JIT + console 警告）
   → `public/tailwind.css` **9.9 KB**。新增 `npm run css`、`css:check`，以及

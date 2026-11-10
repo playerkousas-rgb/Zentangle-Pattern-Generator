@@ -532,6 +532,7 @@ const WM_COS = Array.from({ length: WM_N }, (_, u) => Array.from({ length: WM_N 
 const WM_A = Array.from({ length: WM_N }, (_, u) => u === 0 ? Math.sqrt(1 / 8) : Math.sqrt(2 / 8));
 const WM_B = Array.from({ length: WM_N }, (_, y) => Array.from({ length: WM_N }, (_, x) => WM_A[2] * WM_A[3] * WM_COS[2][y] * WM_COS[3][x]));
 const WM_BASIS_NORM = WM_B.flat().reduce((s, v) => s + v * v, 0);
+const WM_LUMA_C = [0.299, 0.587, 0.114];
 const wmClamp = v => Math.max(0, Math.min(255, Math.round(v)));
 const wmLuma = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
 function wmToBits(str) { return Array.from(str, ch => ch.charCodeAt(0).toString(2).padStart(8, '0')).join(''); }
@@ -540,6 +541,48 @@ function wmCoef(data, w, x0, y0) {
   let sum = 0;
   for (let y = 0; y < WM_N; y++) for (let x = 0; x < WM_N; x++) sum += wmLuma(data, ((y0 + y) * w + x0 + x) * 4) * WM_B[y][x];
   return sum;
+}
+// 模擬某個 delta 落去之後，clamp 完嘅實際係數同溢出量。
+// 純白（255）同純黑（0）區域冇向上／向下嘅 headroom：唔理就會整壞個 bit，
+// 所以要「先模擬、後決定」，揀一個做完 clamp 之後 parity 仍然正確嘅目標。
+function wmSimCoef(data, w, x0, y0, delta) {
+  let coef = 0, clip = 0;
+  for (let y = 0; y < WM_N; y++) for (let x = 0; x < WM_N; x++) {
+    const p = ((y0 + y) * w + x0 + x) * 4;
+    const dv = delta * WM_B[y][x];
+    let ls = 0;
+    for (let c = 0; c < 3; c++) {
+      const raw = data[p + c] + dv;
+      if (raw > 255) { ls += 255 * WM_LUMA_C[c]; clip += raw - 255; }
+      else if (raw < 0) { clip -= raw; }
+      else ls += raw * WM_LUMA_C[c];
+    }
+    coef += ls * WM_B[y][x];
+  }
+  return { coef, clip };
+}
+// 候選目標值：parity 同想要嘅 bit 相符、由近至遠嘅 QIM 格点（正負兩邊都要試）
+function wmTargets(c, want) {
+  const base = Math.round(c / WM_STEP);
+  const out = [];
+  for (let d = 0; d <= 3; d++) for (const s of (d === 0 ? [0] : [-1, 1])) {
+    const q = base + s * d;
+    if (Math.abs(q % 2) === want) out.push(q * WM_STEP);
+  }
+  return out.sort((a, b) => Math.abs(a - c) - Math.abs(b - c)).slice(0, 3);
+}
+// 反解 delta：白（255）／黑（0）區 clamp 會食咗一半振幅，
+// 公式算完同實際落點可以差一倍。所以模擬＋迭代修正，直到貼近目標格點。
+function wmSolveDelta(data, w, x0, y0, c, t) {
+  let d = (t - c) / WM_BASIS_NORM;
+  let sim = wmSimCoef(data, w, x0, y0, d);
+  let best = { d, coef: sim.coef };
+  for (let i = 0; i < 3 && Math.abs(sim.coef - t) > 8; i++) {
+    d = Math.abs(sim.coef) < 0.5 ? d * 2 + (d > 0 ? 4 : -4) : d * t / sim.coef;
+    sim = wmSimCoef(data, w, x0, y0, d);
+    if (Math.abs(sim.coef - t) < Math.abs(best.coef - t)) best = { d, coef: sim.coef };
+  }
+  return best.d;
 }
 function wmEmbed(image, payload = WM_MARK_V1) {
   const { data, width: w, height: h } = image;
@@ -550,9 +593,14 @@ function wmEmbed(image, payload = WM_MARK_V1) {
     for (let x = 0; x + WM_N <= w; x += WM_N, bi++) {
       const want = bits[bi % bits.length] === '1' ? 1 : 0;
       const c = wmCoef(data, w, x, y);
-      let q = Math.round(c / WM_STEP);
-      if ((q & 1) !== want) q += 1;
-      const delta = (q * WM_STEP - c) / WM_BASIS_NORM;
+      // 逐個格點目標試（近 → 遠），揀「落點最準、溢出最少」嘅一個。
+      let delta = 0, bestScore = Infinity;
+      for (const t of wmTargets(c, want)) {
+        const d = wmSolveDelta(data, w, x, y, c, t);
+        const sim = wmSimCoef(data, w, x, y, d);
+        const score = Math.abs(sim.coef - t) + 0.02 * sim.clip;
+        if (score < bestScore) { bestScore = score; delta = d; }
+      }
       for (let yy = 0; yy < WM_N; yy++) for (let xx = 0; xx < WM_N; xx++) {
         const i = ((y + yy) * w + (x + xx)) * 4;
         const dv = delta * WM_B[yy][xx];

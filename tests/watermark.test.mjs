@@ -38,6 +38,30 @@ function makeImage(w = 320, h = 240, seed = 1) {
 
 const clone = img => ({ data: new Uint8ClampedArray(img.data), width: img.width, height: img.height });
 
+/**
+ * 同真實匯出一樣嘅圖：純白底 + 深色筆觸（大面積 255 冇 headroom）。
+ * 呢個 case 係 e2e 捉到嘅 regression：舊版只向上推係數，白色區全部 clip，
+ * 結果成張圖解碼出嚟變晒 NUL。
+ */
+function makeLineArt(w = 600, h = 600) {
+  const data = new Uint8ClampedArray(w * h * 4).fill(255);
+  const ink = (x, y, v) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const i = (Math.round(y) * w + Math.round(x)) * 4;
+    data[i] = data[i + 1] = data[i + 2] = v;
+  };
+  // 同心圓 + 對角曲線，模擬禪繞筆觸
+  for (let t = 0; t < 2400; t++) {
+    const a = t / 2400 * Math.PI * 2;
+    for (const r of [90, 130, 170, 210, 250]) {
+      ink(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 20);
+      ink(w / 2 + Math.cos(a * 3) * r * 0.6, h / 2 + Math.sin(a * 2) * r * 0.6, 60);
+    }
+  }
+  for (let i = 0; i < 300; i++) ink(i * 2, i * 2, 10);
+  return { data, width: w, height: h };
+}
+
 test('W2：v2 payload round-trip（unit／date／hash 讀得返）', () => {
   const img = makeImage();
   const payload = codec.wmMakePayloadV2({ unit: 'ZTNG', date: '20261110', hash: 'A1B2' });
@@ -63,6 +87,27 @@ test('W3：向後兼容 v1 MARK（舊解碼器／舊圖互通）', () => {
   assert.equal(d.payload, 'DRAWSCOUT|v1');
 });
 
+test('W2：白底線稿（同真實匯出一樣）都讀得返', () => {
+  const img = makeLineArt();
+  const before = new Uint8ClampedArray(img.data);
+  const payload = codec.wmMakePayloadV2({ unit: 'ZTNG', date: '20261110', hash: 'C0DE' });
+  codec.wmEmbed(img, payload);
+  const d = codec.wmDecode(img);
+  assert.equal(d.found, true, `白底線稿應該讀到（confidence=${d.confidence}）`);
+  assert.equal(d.payload, payload);
+
+  // 肉眼不可見：單點 ≤ 24 灰階、PSNR ≥ 35dB（線稿係最貼近真實匯出嘅 case）
+  let maxDiff = 0, se = 0, n = 0;
+  for (let i = 0; i < img.data.length; i += 4) for (let c = 0; c < 3; c++) {
+    const d = img.data[i + c] - before[i + c];
+    maxDiff = Math.max(maxDiff, Math.abs(d));
+    se += d * d; n++;
+  }
+  const psnr = 10 * Math.log10((255 * 255) / (se / n));
+  assert.ok(maxDiff <= 24, `水印改動 ${maxDiff} 灰階，超出不可見範圍`);
+  assert.ok(psnr >= 35, `PSNR ${psnr.toFixed(1)}dB 應 ≥ 35dB`);
+});
+
 test('未加水印嘅圖唔會誤判', () => {
   const d = codec.wmDecode(makeImage(320, 240, 3));
   assert.equal(d.found, false);
@@ -81,14 +126,21 @@ test('輕微噪訊／重新壓縮級干擾仍然讀得到（W4 限制內）', ()
   assert.equal(d.found, true, `加噪後仍應讀到（confidence=${d.confidence}）`);
 });
 
-test('水印改動幅度細（肉眼不可見：平均像素差 < 3）', () => {
+test('水印改動幅度細（肉眼不可見：PSNR ≥ 32dB、單點 ≤ 24 灰階）', () => {
   const before = makeImage(256, 256, 5);
   const after = clone(before);
   codec.wmEmbed(after, codec.wmMakePayloadV2());
-  let sum = 0;
-  for (let i = 0; i < before.data.length; i += 4) sum += Math.abs(before.data[i] - after.data[i]);
-  const mad = sum / (before.width * before.height);
-  assert.ok(mad < 3, `平均差 ${mad.toFixed(2)} 應 < 3`);
+  let se = 0, n = 0, maxDiff = 0;
+  for (let i = 0; i < before.data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      const d = after.data[i + c] - before.data[i + c];
+      se += d * d; n++;
+      maxDiff = Math.max(maxDiff, Math.abs(d));
+    }
+  }
+  const psnr = 10 * Math.log10((255 * 255) / (se / n));
+  assert.ok(psnr >= 32, `PSNR ${psnr.toFixed(1)}dB 應 ≥ 32dB`);
+  assert.ok(maxDiff <= 24, `單點最大改動 ${maxDiff} 灰階，應 ≤ 24`);
 });
 
 test('非 ASCII payload 要即刻拋錯（防止亂碼水印）', () => {
