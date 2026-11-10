@@ -6,13 +6,13 @@
 > export) runs **in your browser** — photos are never uploaded. Print-ready A4 / Zendala / Bijou
 > sheets and a local gallery are built in.
 >
-> 🔗 https://zentangle-pattern-generator.vercel.app · 版本 **v1.1.0**
+> 🔗 https://zentangle-pattern-generator.vercel.app · 版本 **v1.2.0**
 
 上傳一張圖片，自動提取主體、智能分區，並填入 45 款正統禪繞（Zentangle）圖案的**純前端**單頁工具。
 所有運算（去背、分區、填圖案、匯出）都在你的瀏覽器完成，**圖片不會上傳到任何伺服器**。
 
-- 🏷️ 目前版本：**v1.1.0**（2026-11-10 全倉審查後加固，見 [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md)）
-- 📦 執行期依賴：**0 個** · 建置產物：`dist/` ≈ **542 KB**
+- 🏷️ 目前版本：**v1.2.0**（審查 ＋ 建議落地，見 [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md)）
+- 📦 執行期依賴：**0 個** · 建置產物：`dist/` ≈ **420 KB**
 - 🧾 授權：版權保留（見 [`LICENSE`](LICENSE)）；Zentangle® 為 Rick Roberts 與 Maria Thomas 的註冊商標，本工具與其無隸屬關係
 
 ## 功能特色
@@ -23,8 +23,12 @@
 - 🎨 45 款內建圖案：密度、線條粗細、深淺節奏、特徵線強度皆可調
 - 📖 圖案圖鑑：含 ⭐ 最愛（localStorage）與逐步驟教學（自動解析 SVG 筆畫）
 - 🖨️ 列印：作品 A4、45 款圖案參考表、空白方磚 / Zendala 圓磚 / Bijou 小磚
+- ✒️ **SVG 線稿匯出**：主體外框＋分區串線（純向量，可無限放大／印刷／雷射切割）
+- 🫥 **隱形水印**：匯出 PNG 內嵌 DCT 水印（`SCOUTSYSTEM|v2|…`，可用 `drawscout` 解碼器驗證）
+  ＋ `tEXt` 版權中繼資料；肉眼不可見
 - 💾 作品集相簿（IndexedDB 本地儲存，可放大預覽 / 下載 / 刪除）
 - 📱 手機友善：底部固定工具列、安全區域（safe-area）支援
+- ⚡ **建置期 Tailwind**（10 KB CSS）取代約 400 KB 的 runtime CDN
 - 🔍 SEO／分享：canonical、Open Graph（1200×630 分享圖）、Twitter Card、JSON-LD
 - 📲 PWA：manifest ＋ 9 個 PNG／ICO 圖標（含 maskable），可「加到主畫面」
 - ♿ 可及性：鍵盤可操作圖案格、彈窗 focus 管理、跳至主內容、`aria-label`／`aria-pressed`
@@ -37,17 +41,21 @@ public/patterns/         ← 45 款圖案 SVG（1.svg ~ 45.svg）+ blank.svg（�
 public/icons/            ← G11 九個圖標：favicon.ico / 16 / 32 / apple-touch / 192 / 512
                             + maskable 192 / 512 + og-image.png（1200×630）
 public/manifest.webmanifest · public/robots.txt · public/sitemap.xml
+public/tailwind.css      ← 建置期編譯的 Tailwind（committed；npm run css 產生）
+src/tailwind.css         ← Tailwind 入口（唔會部署）
+tailwind.config.js       ← 只掃 index.html，輸出最細 CSS
 design/                  ← 圖標母圖 SVG（唔會部署；由 scripts/build_icons.mjs 產出圖標）
 scripts/                 ← 交付閘門（app_check）＋ 規範檢查器（HTML 審計 / SEO / repo_health）
                             ＋ 圖標建置
+tests/                   ← node:test 單元測試（水印 codec）＋ e2e（真 Chromium，截圖回歸）
 docs/                    ← 審查報告與決策紀錄（唔會部署）
-.github/workflows/ci.yml ← PR 閘門：check → lint → build → app_check → 體積預算
+.github/workflows/ci.yml ← PR 閘門：check → lint → test → build → app_check ＋ e2e 截圖
 vite.config.ts           ← 僅打包用（Vite 不做框架編譯）
 vercel.json              ← Framework / Build / Output / 快取標頭
 ```
 
 - **無後端、無資料庫**：IndexedDB / localStorage 全在使用者瀏覽器端
-- **無任何前端框架**：不依賴 React/Vue；Tailwind 以 CDN 方式載入（刻意決策，見下方守則）
+- **無任何前端框架**：不依賴 React/Vue；Tailwind 於建置期編譯成 10 KB CSS（唔再 load CDN）
 - **分析**：用 Vercel 官方零依賴 snippet `/_vercel/insights/script.js`，**不**裝 npm 套件
 - 建置產物 = `dist/`（`index.html` + `public/` 複本，共約 0.53 MB）
 
@@ -60,14 +68,19 @@ npm run check      # TypeScript 型別檢查（tsc -b）
 npm run lint       # ESLint（只覆蓋 .ts；inline JS 由 app_check 補驗）
 npm run build      # 生產打包 → dist/（Vercel 部署的產物）
 npm run preview    # 本機預覽建置結果
+npm run css        # 由 src/tailwind.css 產生 public/tailwind.css（build 會自動跑）
 
-npm run audit      # ★ 交付前閘門：HTML 審計 + SEO + 圖標 + 版號 + 依賴 + 體積 + 死檔
+npm test           # node:test：隱形水印 codec round-trip（直接測 index.html 內嘅碼）
+npm run test:e2e   # 真 Chromium：上載→生成→SVG／PNG→水印→作品集＋390/768/1440 截圖
+                   # （需本機 Chrome；可設 CHROME_PATH 或 BASE_URL 測部署）
+
+npm run audit      # ★ 交付前閘門：HTML 審計 + SEO + 圖標 + 版號 + 依賴 + 體積 + 死檔 + CSS
 npm run seo        # 只跑 SEO／GEO 靜態檢查
 npm run verify     # check → lint → build → audit（CI 跑同一條）
 npm run icons      # 由 design/*.svg 重新產生 9 個圖標（需先 npm i --no-save sharp）
 ```
 
-### 交付前閘門（一個命令驗 10 組嘢）
+### 交付前閘門（一個命令驗 11 組嘢）
 
 ```bash
 npm run verify
@@ -85,6 +98,7 @@ npm run verify
 8. 無 `*.bak`／`*.tmp`／`*.old`／`*.log`／`(1).png` 死檔
 9. inline JS 語法（補 ESLint 只驗 `.ts` 的盲點）
 10. HTML 引用的 icon／manifest 都有實檔
+11. Tailwind 建置期 CSS：檔案存在、≤ 60 KB、冇 runtime CDN、**每個用到的 class 都有 CSS**
 
 > 唯一「已記錄例外」：**V1 檔名版號**。Vercel 靜態站入口必須叫 `index.html`，
 > 不可以叫 `app_v1.1.0.html`；只要四處版號一致，閘門會降級做 INFO 並列印理由。
@@ -115,7 +129,9 @@ npm run verify
 - **可見版權**：頁尾 `© SCOUT SYSTEM 2026`、`<meta name="copyright">`、列印頁腳
 - **寫入檔案**：匯出的 PNG 會寫 `tEXt` 中繼資料（`Copyright`／`Software`／`Source`），
   圖看不出分別，但檔案本身帶得走版權紀錄
-- **未做**：DCT 隱形水印（W2）—— 原因與補償寫在審查報告 §6.1
+- **DCT 隱形水印（W2）**：匯出 PNG 時對 8×8 區塊中頻做 QIM，寫入
+  `SCOUTSYSTEM|v2|<unit>|<yyyymmdd>|<hash>`；`npm test` 直接由 `index.html` 抽出同一段碼做
+  round-trip，e2e 再把下載回來的 PNG 解碼驗證
 - **商標**：Zentangle® 為 Rick Roberts 與 Maria Thomas 的註冊商標；本工具為獨立創作，並無隸屬或授權關係
 
 ## 部署（Vercel）
@@ -149,7 +165,9 @@ npm run verify
 - **分析用官方 snippet**（`/_vercel/insights/script.js`），不要裝 `@vercel/analytics`；`app_check` 會擋。
 - 其他套件只能進 `devDependencies`，並先評估能否以 CDN 或原生 API 取代。
 - 歷史教訓：本倉庫曾殘留 React + react-router + framer-motion + lucide-react + Tailwind 編譯鏈（為一個從未接線的脚手架），讓 `node_modules` 達 **193 MB**、全部被打進 Vercel 快取 —— 已全數移除，勿復辟。
-- Tailwind 目前刻意用 CDN（`cdn.tailwindcss.com`）以維持 100% 既有 UI；若未來要改為建置期編譯，請一次改完並完整視覺回歸測試，**不要兩套並存**（建議步驟見審查報告 §6.2）。
+- **Tailwind 已改為建置期編譯**（`src/tailwind.css` → `public/tailwind.css`，10 KB）。
+  改完 class 要跑 `npm run css`；`npm run audit` 會驗「用到的 class 全部有 CSS」，CI 亦會驗
+  CSS 有冇過期。**唔准**加回 `cdn.tailwindcss.com`（`app_check` 會擋）。
 
 ### 4. 死檔零容忍
 - 刪功能時，連同它的圖片、CSS、孤立檔一起刪（用全域搜尋確認零引用）。
@@ -169,6 +187,8 @@ du -sh public/icons public/patterns dist          # icons ≤ 260K、patterns �
 
 | 文件 | 內容 |
 |---|---|
-| [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md) | v1.0.0 → v1.1.0 全倉審查：發現、修復、未做、建議 |
+| [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md) | v1.0.0 → v1.2.0 全倉審查：發現、修復、建議落地紀錄 |
+| [`AGENTS.md`](AGENTS.md) | AI／工程師施工邊界、加圖案清單、改版流程 |
+| [`SCOPE.md`](SCOPE.md) | 做／唔做清單（含理由），防止 scope creep |
 | [`CHANGELOG.md`](CHANGELOG.md) | 版本紀錄 |
 | [`LICENSE`](LICENSE) | 版權保留與第三方聲明 |
