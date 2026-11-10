@@ -96,7 +96,11 @@ try {
   });
 
   const client = await page.createCDPSession();
-  await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: DL });
+  try {
+    await client.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: DL, eventsEnabled: true });
+  } catch {
+    await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: DL });
+  }
 
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   await page.goto(BASE + '/', { waitUntil: 'networkidle2', timeout: 60000 });
@@ -193,10 +197,14 @@ try {
     `${wm.payload || '(none)'} · confidence ${Number(wm.confidence).toFixed(2)}`);
 
   /* ---------- 作品集（IndexedDB） ---------- */
+  await page.click('#galleryBtn');
+  await page.waitForSelector('#galleryModal.active', { timeout: 5000 });
   await page.click('#gallerySaveBtn');
-  await delay(1200);
+  await page.waitForFunction(() => document.getElementById('galleryCount').textContent.trim() === '1', { timeout: 15000 })
+    .catch(() => {});
   const badge = await page.$eval('#galleryCount', el => el.textContent.trim());
   check('儲存到作品集（badge = 1）', badge === '1', badge);
+  await page.keyboard.press('Escape');
 
   /* ---------- 響應式截圖（人手視覺回歸用） ---------- */
   for (const [w, h, name] of [[768, 1024, '07-tablet-768'], [390, 844, '08-mobile-390']]) {
@@ -209,11 +217,16 @@ try {
   check('冇未處理 JS 錯誤', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
 
   const failed = results.filter(r => !r.ok);
+  for (const f of failed) console.log(`::error title=e2e::${f.name}${f.detail ? ` — ${f.detail}` : ''}`);
+  console.log(`::notice title=e2e::${results.length - failed.length}/${results.length} 通過`);
   console.log(`\n${failed.length ? '❌ E2E FAIL' : '✅ E2E PASS'} — ${results.length - failed.length}/${results.length} 通過`);
   console.log(`截圖：${path.relative(ROOT, ART)}/*.png · 下載：${path.relative(ROOT, DL)}/`);
   exitCode = failed.length ? 1 : 0;
 } catch (err) {
   console.error('\n✗ E2E 執行出錯：', err && err.stack ? err.stack : err);
+  const msg = String((err && err.message) || err).replace(/\n/g, ' ').slice(0, 400);
+  console.log(`::error title=e2e-exception::${msg}`);
+  for (const r of results.filter(x => !x.ok)) console.log(`::error title=e2e::${r.name}${r.detail ? ` — ${r.detail}` : ''}`);
   exitCode = 1;
 } finally {
   await browser.close().catch(() => {});
