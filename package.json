@@ -24,7 +24,7 @@
     "seo": "node scripts/seo_check_v1.0.mjs index.html",
     "icons": "node scripts/build_icons.mjs",
     "verify": "npm run check && npm run lint && npm test && npm run build && node scripts/app_check_v1.0.mjs && npm run css:check",
-    "css": "tailwindcss -c tailwind.config.js -i src/tailwind.css -o public/tailwind.css --minify",
+    "css": "node build-css.mjs",
     "css:check": "npm run css && git diff --exit-code -- public/tailwind.css",
     "predev": "npm run css",
     "prebuild": "npm run css",

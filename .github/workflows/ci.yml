@@ -39,6 +39,10 @@ jobs:
 
       - name: 生產建置
         run: npm run build
+        env:
+          # CI 係真理：唔准「搵唔到 Tailwind CLI 就沿用舊 CSS」，一定要真編譯，
+          # 令 CSS 過期在 PR 就被攔住（Vercel 部署則容許保底，見 build-css.mjs）。
+          TAILWIND_STRICT: '1'
 
       - name: 交付前閘門（HTML 審計 ＋ SEO ＋ 圖標 ＋ 版號 ＋ 體積）
         run: node scripts/app_check_v1.0.mjs
@@ -75,6 +79,8 @@ jobs:
 
       - name: 生產建置
         run: npm run build
+        env:
+          TAILWIND_STRICT: '1'
 
       - name: 端到端實測（上載 → 生成 → SVG／PNG 匯出 → 水印 → 作品集 → 截圖）
         run: npm run test:e2e

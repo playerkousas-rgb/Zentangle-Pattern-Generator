@@ -214,12 +214,29 @@ if (!existsSync(twPath)) {
 // 部署煙霧測試：.vercelignore 唔可以連建置必需品都排除（2026-11-10 真係咁樣炸過一次：
 // src/ 被 ignore → Vercel 上面 npm run css 找唔到 src/tailwind.css → build fail）
 if (existsSync('.vercelignore')) {
-  const critical = ['index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'tailwind.config.js', 'src/tailwind.css', 'public/'];
+  const critical = ['index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'tailwind.config.js', 'src/tailwind.css', 'public/', 'build-css.mjs', '.npmrc'];
   const rules = readFileSync('.vercelignore', 'utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
   const hidden = critical.filter(f => rules.some(r => f === r || f.startsWith(r.replace(/\/$/, '') + '/')));
   if (hidden.length) fail('S7/deploy', `.vercelignore 排除咗建置必要檔案：${hidden.join(', ')} — Vercel build 會 fail`);
-  else pass('S7/deploy', '.vercelignore 冇排除建置必要檔案（src/tailwind.css、tailwind.config.js 會上傳）');
+  else pass('S7/deploy', '.vercelignore 冇排除建置必要檔案（src/tailwind.css、tailwind.config.js、build-css.mjs、.npmrc 會上傳）');
 }
+
+// 建置工具唔可以被略過（2026-11-10 真事故：建置環境 NODE_ENV=production → npm ci 依預設
+// 略過 devDependencies → 冇 tailwindcss／vite／typescript → prebuild「tailwindcss: command not
+// found」→ deploy fail。第一道防線 .npmrc include=dev，第二道 vercel.json installCommand。）
+const cssScript = JSON.parse(read('package.json')).scripts?.css ?? '';
+if (!/build-css\.mjs/.test(cssScript)) {
+  fail('S7/devdeps', `package.json "css" 應為 node build-css.mjs（現時：${cssScript}）— 缺少缺套件時的保底處理`);
+} else if (!existsSync(path.join(ROOT, 'build-css.mjs'))) {
+  fail('S7/devdeps', '缺 build-css.mjs — npm run css／prebuild 會 fail');
+} else if (!/^\s*include\s*=\s*dev\s*$/m.test(existsSync(path.join(ROOT, '.npmrc')) ? read('.npmrc') : '')) {
+  fail('S7/devdeps', '.npmrc 缺 include=dev — NODE_ENV=production 時 npm ci 會略過 devDependencies（tailwindcss／vite／typescript），build 會 fail');
+} else {
+  const installCmd = existsSync(path.join(ROOT, 'vercel.json')) ? (JSON.parse(read('vercel.json')).installCommand ?? '') : '';
+  if (!/--include=dev/.test(installCmd)) warn('S7/devdeps', `vercel.json installCommand 未寫 --include=dev（現時：${installCmd || '未設定'}）；.npmrc 已擋，屬第二道防線`);
+  else pass('S7/devdeps', 'npm ci 會安裝 devDependencies（.npmrc include=dev ＋ vercel.json --include=dev），Tailwind 建置工具齊全');
+}
+
 
 /* ---------- 報告 ---------- */
 const count = lvl => out.filter(f => f.level === lvl).length;
