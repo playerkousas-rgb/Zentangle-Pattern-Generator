@@ -3,6 +3,24 @@
 本專案採用 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/) 格式，
 版號跟 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [未發布]
+
+### 修正
+- **部署 build 失敗：`tailwindcss: command not found`（`[BUILD_UTILS_SPAWN_127]`）**。
+  成因：建置環境帶 `NODE_ENV=production`，`npm ci` 依 npm 預設**略過 devDependencies**，
+  `node_modules` 連 `tailwindcss`／`vite`／`typescript` 都冇，`prebuild` 第一步就死。
+  三道防線：
+  1. 新增根目錄 `.npmrc`（`include=dev`）—— 任何環境 `npm ci`／`npm install` 都會裝建置工具；
+  2. `vercel.json` `installCommand` 改為 `npm ci --include=dev`（第二道，明示）；
+  3. `npm run css` 改由新增的 `build-css.mjs` 執行：搵得到 CLI 就正常編譯（真錯誤照樣 fail）；
+     搵唔到就**大聲警告並沿用已 commit 的 `public/tailwind.css`**，唔會再令 deploy 死在
+     「少一個 devDependency」；連舊 CSS 都冇就 fail 並講清補救方法。
+- **防復發閘門**：`app_check` 新增 `S7/devdeps`（驗 `.npmrc` `include=dev`、`vercel.json`
+  `--include=dev`、`package.json` `css` 指向 `build-css.mjs`、`build-css.mjs` 存在），
+  `S7/deploy` 的建置必需品清單加入 `build-css.mjs` 與 `.npmrc`。
+- **CI 維持真理**：CI 兩個 build 步驟加 `TAILWIND_STRICT=1`，缺 Tailwind CLI 時一定 fail，
+  所以「CSS 過期」仍然會在 PR 被 `css:check` 攔住；保底機制只作用於部署環境。
+
 ## [1.2.0] — 2026-11-10（同日第二輪：建議落地）
 
 第一輪審查報告 [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md) 的建議，逐項落地。

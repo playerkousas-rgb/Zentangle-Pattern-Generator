@@ -5,7 +5,7 @@
 ## 1. 開工前 60 秒
 
 ```bash
-npm ci
+npm ci                # 若環境有 NODE_ENV=production，請用 npm ci --include=dev（見 §7）
 npm run verify        # check → lint → test → build → app_check → css:check
 ```
 
@@ -56,6 +56,8 @@ git commit -m "feat(scope): 做咩"
 
 ```
 index.html                應用本體（UI + 邏輯 + 水印 codec + SVG 線稿）
+build-css.mjs             npm run css 入口（缺 Tailwind CLI 時保底；部署必需）
+.npmrc                    include=dev（唔可以被略過，見 §7）
 public/patterns/          45 款圖案 SVG（部署必需）
 public/icons/             9 個圖標（部署必需）
 public/tailwind.css       建置產物（committed；由 npm run css 產生）
@@ -69,5 +71,9 @@ docs/                     審查報告（唔部署）
 ## 7. 出事第一句
 
 - 部署壞 → Vercel 回滾上一個 deployment
+- `tailwindcss: command not found`／`[BUILD_UTILS_SPAWN_127]` → 建置環境
+  `NODE_ENV=production` 令 `npm ci` 略過 devDependencies。修法：
+  `.npmrc` 保留 `include=dev`、`vercel.json` 用 `npm ci --include=dev`；
+  `build-css.mjs` 會喺缺 CLI 時沿用已 commit 的 CSS（`app_check` `S7/devdeps` 會擋復發）
 - 體積爆 → `du -sh dist public/icons public/patterns`，對 `app_check` 邊項紅
 - 圖案唔見 → 九成係 `public/patterns` 檔名或 `.vercelignore` 改錯

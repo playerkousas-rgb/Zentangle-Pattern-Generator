@@ -44,6 +44,8 @@ public/manifest.webmanifest · public/robots.txt · public/sitemap.xml
 public/tailwind.css      ← 建置期編譯的 Tailwind（committed；npm run css 產生）
 src/tailwind.css         ← Tailwind 入口（唔會部署）
 tailwind.config.js       ← 只掃 index.html，輸出最細 CSS
+build-css.mjs            ← npm run css 的入口（缺 Tailwind CLI 時的保底處理，見「部署」）
+.npmrc                   ← include=dev：令 npm ci 連建置工具一齊裝（唔可以被略過）
 design/                  ← 圖標母圖 SVG（唔會部署；由 scripts/build_icons.mjs 產出圖標）
 scripts/                 ← 交付閘門（app_check）＋ 規範檢查器（HTML 審計 / SEO / repo_health）
                             ＋ 圖標建置
@@ -68,7 +70,7 @@ npm run check      # TypeScript 型別檢查（tsc -b）
 npm run lint       # ESLint（只覆蓋 .ts；inline JS 由 app_check 補驗）
 npm run build      # 生產打包 → dist/（Vercel 部署的產物）
 npm run preview    # 本機預覽建置結果
-npm run css        # 由 src/tailwind.css 產生 public/tailwind.css（build 會自動跑）
+npm run css        # 由 src/tailwind.css 產生 public/tailwind.css（build 會自動跑；入口 build-css.mjs）
 
 npm test           # node:test：隱形水印 codec round-trip（直接測 index.html 內嘅碼）
 npm run test:e2e   # 真 Chromium：上載→生成→SVG／PNG→水印→作品集＋390/768/1440 截圖
@@ -137,9 +139,16 @@ npm run verify
 ## 部署（Vercel）
 
 - Framework：**Vite**｜Build：`npm run build`｜Output：`dist/`（已於 `vercel.json` 固化）
+- **安裝命令：`npm ci --include=dev`**（已寫入 `vercel.json`）。原因：若建置環境有
+  `NODE_ENV=production`，`npm ci` 會依 npm 預設**略過 devDependencies** → 冇 `tailwindcss`／
+  `vite`／`typescript` → `prebuild` 出 `tailwindcss: command not found` → deploy fail
+  （2026-11-10 真實事故）。三道防線：根目錄 `.npmrc` 的 `include=dev`、`vercel.json`
+  的 `--include=dev`、以及 `build-css.mjs`（缺 CLI 時沿用已 commit 的 CSS 並大聲警告）。
+  本機若曾 `NODE_ENV=production npm ci` 而 build 失敗：`npm ci --include=dev` 即可。
 - `vercel.json` 另為圖標、`/patterns/*` 加上快取標頭
 - Node 需求：≥ 20.19（Vite 7 要求，Vercel 預設即符合）
-- CI 必須綠才合併；合併後開一次 Preview 與 Production，F12 Console 應 0 error
+- CI 必須綠才合併（CI 用 `TAILWIND_STRICT=1` 跑 build，確保 CSS 一定真編譯、冇過期）；
+  合併後開一次 Preview 與 Production，F12 Console 應 0 error
 
 ---
 
@@ -154,7 +163,7 @@ npm run verify
 - 開發／審查用而**不部署**的：`scripts/`、`docs/`、`design/`、`.github/`、`README.md`、`CHANGELOG.md`、`LICENSE`。
 - ⚠️ `.vercelignore` 一旦建立就**取代預設忽略規則**，所以 `.git`、`node_modules` 必須明確保留在清單內，勿刪。
 - 🚫 **絕對唔可以**把建置必需品加入清單：`index.html`、`package(-lock).json`、`vite.config.ts`、
-  `tsconfig*.json`、`tailwind.config.js`、`src/tailwind.css`、`public/`。
+  `tsconfig*.json`、`tailwind.config.js`、`src/tailwind.css`、`build-css.mjs`、`.npmrc`、`public/`。
   （2026-11-10 真實教訓：`src/` 被 ignore → Vercel 上 `npm run css` 找唔到入口 → build fail。
   現在 `npm run audit` 的 `S7/deploy` 會擋。）
 
