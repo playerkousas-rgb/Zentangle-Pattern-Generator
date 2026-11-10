@@ -1,0 +1,20 @@
+{
+  "name": "禪繞畫工具 — Zentangle Pattern Generator",
+  "short_name": "禪繞畫",
+  "description": "上傳相片，自動提取主體、智能分區，再填入 45 款禪繞圖案。純前端，圖片不會離開你的裝置。",
+  "lang": "zh-Hant",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#02133E",
+  "theme_color": "#02133E",
+  "categories": ["art", "design", "graphics", "photo"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

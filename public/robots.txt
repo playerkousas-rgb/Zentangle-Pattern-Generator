@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zentangle-pattern-generator.vercel.app/sitemap.xml
