@@ -49,6 +49,8 @@ eslint.config.js
 #    vite.config.ts / tsconfig*.json（npm run build 需要 tsc -b）
 #    index.html（應用程式本體）
 #    public/（icons 9 個圖標、manifest、robots、sitemap、45 款圖案 SVG + blank.svg）
+#    src/tailwind.css ＋ tailwind.config.js（npm run css 的輸入，prebuild 會跑）
+#    （2026-11-10 教訓：曾經把 src/ 加入清單，Vercel build 即刻 fail）
 #    vercel.json（部署設定）
 # ============================================================
 
@@ -59,7 +61,6 @@ design/
 .github/
 CHANGELOG.md
 LICENSE
-src/
 
 # 測試產物／e2e
 tests/

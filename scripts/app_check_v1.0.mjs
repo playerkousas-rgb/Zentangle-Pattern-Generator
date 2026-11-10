@@ -211,6 +211,16 @@ if (!existsSync(twPath)) {
   else pass('S7/css', `${used.length} 個 class 全部有 CSS（${used.length - missing.length} 個 utility ＋ 自訂 class）`);
 }
 
+// 部署煙霧測試：.vercelignore 唔可以連建置必需品都排除（2026-11-10 真係咁樣炸過一次：
+// src/ 被 ignore → Vercel 上面 npm run css 找唔到 src/tailwind.css → build fail）
+if (existsSync('.vercelignore')) {
+  const critical = ['index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'tailwind.config.js', 'src/tailwind.css', 'public/'];
+  const rules = readFileSync('.vercelignore', 'utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  const hidden = critical.filter(f => rules.some(r => f === r || f.startsWith(r.replace(/\/$/, '') + '/')));
+  if (hidden.length) fail('S7/deploy', `.vercelignore 排除咗建置必要檔案：${hidden.join(', ')} — Vercel build 會 fail`);
+  else pass('S7/deploy', '.vercelignore 冇排除建置必要檔案（src/tailwind.css、tailwind.config.js 會上傳）');
+}
+
 /* ---------- 報告 ---------- */
 const count = lvl => out.filter(f => f.level === lvl).length;
 const ok = count('FAIL') === 0;

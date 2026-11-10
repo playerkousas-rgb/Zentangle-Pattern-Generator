@@ -153,6 +153,10 @@ npm run verify
 - 永不部署：`.git`、`node_modules`、`dist`、`*.bak`、`*.log`、`*.tmp`、`*.old`、`uploads/`、暫存檔、本機快取。
 - 開發／審查用而**不部署**的：`scripts/`、`docs/`、`design/`、`.github/`、`README.md`、`CHANGELOG.md`、`LICENSE`。
 - ⚠️ `.vercelignore` 一旦建立就**取代預設忽略規則**，所以 `.git`、`node_modules` 必須明確保留在清單內，勿刪。
+- 🚫 **絕對唔可以**把建置必需品加入清單：`index.html`、`package(-lock).json`、`vite.config.ts`、
+  `tsconfig*.json`、`tailwind.config.js`、`src/tailwind.css`、`public/`。
+  （2026-11-10 真實教訓：`src/` 被 ignore → Vercel 上 `npm run css` 找唔到入口 → build fail。
+  現在 `npm run audit` 的 `S7/deploy` 會擋。）
 
 ### 2. 圖片與靜態資源
 - `public/patterns/` 內的編號 SVG（`1.svg`–`45.svg`）與 `blank.svg` 被 `index.html` 以絕對路徑引用，**缺一不可**；新增圖案要同步改 `index.html` 內 `Array.from({ length: 45 })` 的數量與相關 UI 數字（46 / 45 處）。
