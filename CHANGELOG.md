@@ -30,7 +30,7 @@
   「用到的 class 全部有 CSS」閘門（152 個 class）＋ e2e 檢查 CDN 真的消失。
 - **45 款圖案 SVG 過 SVGO**：283.4 KB → 146.3 KB（**-48.4%**），逐檔用 sharp 以 240px 點陣化
   比對，像素差 0、path 數目同 viewBox 不變（`public/patterns` 392K → 236K）。
-- **`dist` 由 542 KB 降至 420 KB**。
+- **`dist` 由 542 KB 降至 440 KB**。
 - `npm run verify` 加入 `npm test` 與 `css:check`（CI 用同一條）。
 
 ### 未做（維持並記錄）
