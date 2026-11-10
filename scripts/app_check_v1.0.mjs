@@ -182,6 +182,35 @@ const missingRefs = headRefs.filter(h => !existsSync(path.join(ROOT, 'public', h
 if (missingRefs.length) fail('G11/link', `HTML 引用咗唔存在嘅檔：${missingRefs.join(', ')}`);
 else pass('G11/link', `${headRefs.length} 個 icon／manifest 引用全部有實檔`);
 
+/* ---------- 11. Tailwind 建置期 CSS（唔用 runtime CDN） ---------- */
+const twPath = path.join(ROOT, 'public/tailwind.css');
+if (!existsSync(twPath)) {
+  fail('S7/css', '缺 public/tailwind.css — 跑 npm run css');
+} else {
+  const css = readFileSync(twPath, 'utf8');
+  const bytes = Buffer.byteLength(css);
+  if (bytes > 60 * 1024) fail('S7/css', `tailwind.css ${(bytes / 1024).toFixed(1)} KB > 60 KB 預算`);
+  else pass('S7/css', `tailwind.css ${(bytes / 1024).toFixed(1)} KB（建置期編譯，取代 ~400 KB runtime CDN）`);
+
+  if (/cdn\.tailwindcss\.com/.test(html)) fail('S7/css', 'index.html 仍然載入 cdn.tailwindcss.com — 應改為 /tailwind.css');
+  else pass('S7/css', '無 runtime Tailwind CDN');
+
+  // 覆蓋率：HTML／JS 用到的每個 utility 都要真係生成咗（自訂 class 由 <style> 定義，另計）
+  // 自訂 class 可能定義在主 <style>、亦可能喺列印模板（template string）嘅 CSS 入面；
+  // 用「HTML 內有冇出現 .classname」做判斷（utility 只會喺 CSS 檔出現）。
+  const isCustom = t => html.includes('.' + t);
+  const tokens = new Set();
+  const feed = str => str.split(/\s+/).forEach(t => { if (t) tokens.add(t); });
+  for (const m of html.matchAll(/class="([^"]*)"/g)) feed(m[1]);
+  for (const m of html.matchAll(/classList\.(?:add|remove|toggle)\(([^)]*)\)/g)) for (const q of m[1].matchAll(/'([^']+)'/g)) feed(q[1]);
+  for (const m of html.matchAll(/className\s*=\s*[`'"]([^`'"]*)/g)) feed(m[1]);
+  const escSel = t => t.replace(/([\[\]:/%#.,()!+*~'"])/g, '\\$1');
+  const used = [...tokens].filter(t => t && !t.includes('{') && !t.includes("'") && t !== ':' && t !== '?');
+  const missing = used.filter(t => !isCustom(t) && !css.includes('.' + escSel(t)));
+  if (missing.length) fail('S7/css', `${missing.length} 個 class 冇對應 CSS（Tailwind 掃唔到）：${missing.slice(0, 12).join(', ')}${missing.length > 12 ? ' …' : ''}`);
+  else pass('S7/css', `${used.length} 個 class 全部有 CSS（${used.length - missing.length} 個 utility ＋ 自訂 class）`);
+}
+
 /* ---------- 報告 ---------- */
 const count = lvl => out.filter(f => f.level === lvl).length;
 const ok = count('FAIL') === 0;

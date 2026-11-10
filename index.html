@@ -10,7 +10,7 @@
   <meta name="keywords" content="禪繞畫,Zentangle,圖案產生器,自動分區,Zendala,填色稿,列印,pattern generator">
   <meta name="author" content="Scout System">
   <meta name="copyright" content="© SCOUT SYSTEM 2026. All rights reserved.">
-  <meta name="app-version" content="v1.1.0">
+  <meta name="app-version" content="v1.2.0">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#02133E">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -35,10 +35,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
 
-  <link rel="preconnect" href="https://cdn.tailwindcss.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind 建置期編譯（npm run css）；唔再用 400KB 嘅 runtime CDN -->
+  <link rel="stylesheet" href="/tailwind.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- Vercel Web Analytics：官方零依賴 snippet。
@@ -221,6 +221,10 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
             列印
           </button>
+          <button id="svgBtn" class="btn-secondary px-5 py-3 rounded-lg hidden lg:inline-flex items-center gap-2" title="匯出向量線稿 SVG（可無限放大／印刷／雷射）">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+            SVG 線稿
+          </button>
           <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           下載 PNG
@@ -389,7 +393,7 @@
     </main>
 
     <footer class="max-w-7xl mx-auto mt-8 text-center">
-      <p class="footer-text">© SCOUT SYSTEM 2026. All rights reserved. · <span id="appVersion">v1.1.0</span></p>
+      <p class="footer-text">© SCOUT SYSTEM 2026. All rights reserved. · <span id="appVersion">v1.2.0</span></p>
       <p class="footer-text" style="margin-top: 6px; max-width: 640px; margin-left: auto; margin-right: auto;">所有運算（去背、分區、繪圖）都在你的瀏覽器完成，圖片不會上傳到任何伺服器。<br>Zentangle® 是 Rick Roberts 與 Maria Thomas 的註冊商標；本工具為獨立創作，與其無任何隸屬或授權關係。</p>
     </footer>
   </div>
@@ -499,6 +503,9 @@
     <button id="barSaveBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="儲存到相簿" title="儲存到相簿">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 21v-8H7v8M7 3v5h8"/></svg>
     </button>
+    <button id="barSvgBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="匯出 SVG 線稿" title="匯出 SVG 線稿">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
+    </button>
     <button id="barPrintBtn" class="btn-secondary px-3 rounded-lg flex items-center justify-center gap-2" aria-label="列印作品">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V4h12v5M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v6H6v-6z"/></svg>
     </button>
@@ -512,7 +519,78 @@
 // ===== 雙版號 V1/V2：唯一真理 =====
 // 改版時四處一齊改：① 本常數 ② <meta name="app-version"> ③ 頁尾 #appVersion ④ package.json version
 // （檔名例外：Vercel 入口必須叫 index.html，見 README「版號」一節）
-const APP_VERSION = 'v1.1.0';
+const APP_VERSION = 'v1.2.0';
+
+// ===== <watermark-codec> =====
+// SCOUT SYSTEM 隱形水印 codec（DCT 中頻 QIM）— 與 drawscout_decoder 完全兼容。
+// 來源：playerkousas-rgb/readme templates/watermark/scout_watermark_codec_v1.0.mjs（同作者）。
+// 演算法：8×8 區塊 DCT (u=2,v=3) 係數，STEP=32 QIM，每塊 1 bit，payload 循環重複；
+//         解碼用多數決投票。純 JS，無 DOM 依賴，只食 {data,width,height}。
+// ⚠️ 測試（node --test tests/）會直接由呢兩個 marker 抽出本段，確保「跑嘅就係測嘅」。
+const WM_STEP = 32, WM_N = 8, WM_MARK_V1 = 'DRAWSCOUT|v1', WM_PREFIX_V2 = 'SCOUTSYSTEM|v2|';
+const WM_COS = Array.from({ length: WM_N }, (_, u) => Array.from({ length: WM_N }, (_, x) => Math.cos((2 * x + 1) * u * Math.PI / 16)));
+const WM_A = Array.from({ length: WM_N }, (_, u) => u === 0 ? Math.sqrt(1 / 8) : Math.sqrt(2 / 8));
+const WM_B = Array.from({ length: WM_N }, (_, y) => Array.from({ length: WM_N }, (_, x) => WM_A[2] * WM_A[3] * WM_COS[2][y] * WM_COS[3][x]));
+const WM_BASIS_NORM = WM_B.flat().reduce((s, v) => s + v * v, 0);
+const wmClamp = v => Math.max(0, Math.min(255, Math.round(v)));
+const wmLuma = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+function wmToBits(str) { return Array.from(str, ch => ch.charCodeAt(0).toString(2).padStart(8, '0')).join(''); }
+function wmFromBits(bits) { let out = ''; for (let i = 0; i + 8 <= bits.length; i += 8) out += String.fromCharCode(parseInt(bits.slice(i, i + 8), 2)); return out; }
+function wmCoef(data, w, x0, y0) {
+  let sum = 0;
+  for (let y = 0; y < WM_N; y++) for (let x = 0; x < WM_N; x++) sum += wmLuma(data, ((y0 + y) * w + x0 + x) * 4) * WM_B[y][x];
+  return sum;
+}
+function wmEmbed(image, payload = WM_MARK_V1) {
+  const { data, width: w, height: h } = image;
+  if (!/^[\x20-\x7E]+$/.test(payload)) throw new Error('PAYLOAD_MUST_BE_ASCII');
+  const bits = wmToBits(payload);
+  let bi = 0;
+  for (let y = 0; y + WM_N <= h; y += WM_N) {
+    for (let x = 0; x + WM_N <= w; x += WM_N, bi++) {
+      const want = bits[bi % bits.length] === '1' ? 1 : 0;
+      const c = wmCoef(data, w, x, y);
+      let q = Math.round(c / WM_STEP);
+      if ((q & 1) !== want) q += 1;
+      const delta = (q * WM_STEP - c) / WM_BASIS_NORM;
+      for (let yy = 0; yy < WM_N; yy++) for (let xx = 0; xx < WM_N; xx++) {
+        const i = ((y + yy) * w + (x + xx)) * 4;
+        const dv = delta * WM_B[yy][xx];
+        data[i] = wmClamp(data[i] + dv);
+        data[i + 1] = wmClamp(data[i + 1] + dv);
+        data[i + 2] = wmClamp(data[i + 2] + dv);
+      }
+    }
+  }
+  return { blocks: bi, bits: bits.length, payload };
+}
+function wmDecodeWithLength(image, bitLength) {
+  const { data, width: w, height: h } = image;
+  const votes = Array.from({ length: bitLength }, () => [0, 0]);
+  let bi = 0;
+  for (let y = 0; y + WM_N <= h; y += WM_N) for (let x = 0; x + WM_N <= w; x += WM_N, bi++) votes[bi % bitLength][Math.round(wmCoef(data, w, x, y) / WM_STEP) & 1]++;
+  const got = votes.map(v => (v[1] > v[0] ? '1' : '0')).join('');
+  const confidence = votes.reduce((s, v) => s + Math.max(v[0], v[1]) / (v[0] + v[1] || 1), 0) / votes.length;
+  return { payload: wmFromBits(got), confidence, blocks: bi };
+}
+function wmDecode(image) {
+  let best = null;
+  for (const len of [wmToBits(WM_MARK_V1).length, 33 * 8]) {
+    const r = wmDecodeWithLength(image, len);
+    const ok = (r.payload === WM_MARK_V1 || r.payload.startsWith(WM_PREFIX_V2)) && r.confidence > 0.58;
+    const cand = { ...r, found: ok, version: r.payload.startsWith(WM_PREFIX_V2) ? 'v2' : 'v1' };
+    if (!best || (cand.found && !best.found) || (cand.found === best.found && cand.confidence > best.confidence)) best = cand;
+  }
+  const parts = best.payload.startsWith(WM_PREFIX_V2) ? best.payload.split('|') : [];
+  return { found: best.found, version: best.found ? best.version : null, payload: best.payload, confidence: best.confidence, unit: parts[2] || null, date: parts[3] || null, hash: parts[4] || null };
+}
+function wmMakePayloadV2({ unit = '0000', date = '20260101', hash = '0000' } = {}) {
+  const clean = (v, n) => String(v).replace(/[^0-9A-Za-z]/g, '').slice(0, n).padEnd(n, '0');
+  const p = `${WM_PREFIX_V2}${clean(unit, 4)}|${clean(date, 8)}|${clean(hash, 4)}`;
+  if (p.length !== 33) throw new Error('PAYLOAD_V2_MUST_BE_33_CHARS');
+  return p;
+}
+// ===== </watermark-codec> =====
 
 class ZentangleGenerator {
   constructor() {
@@ -629,6 +707,8 @@ class ZentangleGenerator {
 
     this.el('generateBtn').onclick = () => this.generate(true);
     this.el('downloadBtn').onclick = () => this.download();
+    this.el('svgBtn').onclick = () => this.downloadSVG();
+    this.el('barSvgBtn').onclick = () => this.downloadSVG();
     this.el('printBtn').onclick = () => this.openModal('printMenu');
     this.el('barPrintBtn').onclick = () => this.openModal('printMenu');
     this.el('printSheetBtn').onclick = () => this.printPatternSheet();
@@ -1559,7 +1639,10 @@ class ZentangleGenerator {
   // W（版權）：匯出 PNG 寫入 tEXt 中繼資料（Copyright／Software／Source），
   // 圖睇落完全一樣，但檔案本身帶得走版權紀錄。用「檢查器」或 exiftool 睇得到。
   async toPNGBlob() {
-    const blob = await new Promise(resolve => this.mainCanvas.toBlob(resolve, 'image/png'));
+    // ① W2：先做 DCT 隱形水印（解碼器讀得到），再 ② 寫入 tEXt 中繼資料。
+    // 兩樣都唔會改變肉眼所見（水印改動 ±16 灰階以內）。
+    const srcCanvas = this.watermarkCanvas();
+    const blob = await new Promise(resolve => srcCanvas.toBlob(resolve, 'image/png'));
     if (!blob) return null;
     try {
       const raw = new Uint8Array(await blob.arrayBuffer());
@@ -1592,6 +1675,33 @@ class ZentangleGenerator {
       console.warn('[zentangle] PNG metadata skipped:', err);
       return blob; // 加唔到中繼資料都唔好阻住用戶下載
     }
+  }
+
+  // 由目前作品產生「已嵌水印」嘅 canvas；失敗時回退原圖，唔會阻住下載。
+  watermarkCanvas() {
+    const w = this.mainCanvas.width, h = this.mainCanvas.height;
+    const out = this.makeCanvas(w, h);
+    const ctx = out.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(this.mainCanvas, 0, 0);
+    try {
+      const img = ctx.getImageData(0, 0, w, h);
+      wmEmbed(img, this.watermarkPayload());
+      ctx.putImageData(img, 0, 0);
+      const check = wmDecode(img);
+      if (!check.found) console.warn('[zentangle] 水印自檢未通過（圖片太細或太均勻）：', check.confidence);
+    } catch (err) {
+      console.warn('[zentangle] 水印略過：', err && err.message);
+    }
+    return out;
+  }
+
+  // v2 payload：SCOUTSYSTEM|v2|<unit4>|<yyyymmdd>|<hash4>（33 字元，純 ASCII）
+  watermarkPayload() {
+    const d = new Date();
+    const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    const seed = `${APP_VERSION}|${this.mainCanvas.width}x${this.mainCanvas.height}|${date}`;
+    const hash = (this.crc32(new TextEncoder().encode(seed)) >>> 0).toString(16).toUpperCase().padStart(8, '0').slice(0, 4);
+    return wmMakePayloadV2({ unit: 'ZTNG', date, hash });
   }
 
   crc32(bytes) {
@@ -2132,6 +2242,127 @@ class ZentangleGenerator {
       this.updateGalleryBadge();
       this.toast('已刪除');
     } catch (e) { this.toast('刪除失敗', false); }
+  }
+
+  // ===== 向量線稿 SVG（W：版權寫入檔；S：純路徑，唔含點陣圖） =====
+  // 只抽輪廓：主體外框 + 分區串線。筆觸細節（特徵線）仍屬點陣管線，
+  // 所以 SVG 定位係「可放大／可印刷／可雷射切割嘅底稿」，唔冒充完整向量重繪。
+  boundaryPaths(w, h, getLabel) {
+    const segs = [];
+    const seen = new Set();
+    const add = (x1, y1, x2, y2) => {
+      const a = `${x1},${y1},${x2},${y2}`;
+      const b = `${x2},${y2},${x1},${y1}`;
+      if (seen.has(a) || seen.has(b)) return;
+      seen.add(a);
+      segs.push([x1, y1, x2, y2]);
+    };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const L = getLabel(x, y);
+        if (!L) continue;
+        if (x === 0 || getLabel(x - 1, y) !== L) add(x, y, x, y + 1);
+        if (x === w - 1 || getLabel(x + 1, y) !== L) add(x + 1, y, x + 1, y + 1);
+        if (y === 0 || getLabel(x, y - 1) !== L) add(x, y, x + 1, y);
+        if (y === h - 1 || getLabel(x, y + 1) !== L) add(x, y + 1, x + 1, y + 1);
+      }
+    }
+    // 將零散邊接成連續折線（端點相同就接埋）
+    const nodes = new Map();
+    segs.forEach(([x1, y1, x2, y2], id) => {
+      const k1 = `${x1},${y1}`, k2 = `${x2},${y2}`;
+      if (!nodes.has(k1)) nodes.set(k1, []);
+      if (!nodes.has(k2)) nodes.set(k2, []);
+      nodes.get(k1).push({ id, to: k2 });
+      nodes.get(k2).push({ id, to: k1 });
+    });
+    const used = new Uint8Array(segs.length);
+    const paths = [];
+    for (let i = 0; i < segs.length; i++) {
+      if (used[i]) continue;
+      const poly = [];
+      let cur = i;
+      let [x, y] = segs[i];
+      poly.push([x, y]);
+      while (cur !== -1) {
+        const [, , nx, ny] = segs[cur];
+        used[cur] = 1;
+        poly.push([nx, ny]);
+        cur = -1;
+        for (const n of nodes.get(`${nx},${ny}`) || []) {
+          if (!used[n.id]) { cur = n.id; break; }
+        }
+      }
+      if (poly.length > 2) paths.push(poly);
+    }
+    return paths;
+  }
+
+  simplifyPath(points, tol = 1.1) {
+    if (points.length < 4) return points;
+    const keep = new Uint8Array(points.length);
+    keep[0] = 1; keep[points.length - 1] = 1;
+    const stack = [[0, points.length - 1]];
+    while (stack.length) {
+      const [a, b] = stack.pop();
+      const [x1, y1] = points[a];
+      const [x2, y2] = points[b];
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      let maxD = -1, idx = -1;
+      for (let i = a + 1; i < b; i++) {
+        const d = Math.abs(dy * points[i][0] - dx * points[i][1] + x2 * y1 - y2 * x1) / len;
+        if (d > maxD) { maxD = d; idx = i; }
+      }
+      if (maxD > tol && idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+    }
+    return points.filter((_, i) => keep[i]);
+  }
+
+  pathData(points, close = true) {
+    const d = points.map(([x, y], i) => `${i ? 'L' : 'M'}${Math.round(x * 10) / 10} ${Math.round(y * 10) / 10}`).join(' ');
+    return close ? d + ' Z' : d;
+  }
+
+  buildSVG() {
+    const w = this.mainCanvas.width, h = this.mainCanvas.height;
+    const vis = this.visibleMask;
+    const outline = this.boundaryPaths(w, h, (x, y) => (vis[y * w + x] ? 1 : 0))
+      .map(p => this.pathData(this.simplifyPath(p, 1)));
+    let region = [];
+    if (this.settings.stringLines && this.regionLabelMap) {
+      const lab = this.regionLabelMap;
+      region = this.boundaryPaths(w, h, (x, y) => lab[y * w + x] || 0)
+        .map(p => this.pathData(this.simplifyPath(p, 1)));
+    }
+    const title = `禪繞畫線稿 — Zentangle Pattern Generator ${APP_VERSION}`;
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <title>${title}</title>
+  <desc>向量線稿：主體外框與分區串線；© SCOUT SYSTEM 2026. 由 zentangle-pattern-generator.vercel.app 產生。</desc>
+  <metadata>© SCOUT SYSTEM 2026 · Software: Zentangle Pattern Generator ${APP_VERSION}</metadata>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <g fill="none" stroke="#111111" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    ${outline.map(d => `<path d="${d}"/>`).join('\n    ')}
+  </g>
+  <g fill="none" stroke="#333333" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
+    ${region.map(d => `<path d="${d}"/>`).join('\n    ')}
+  </g>
+</svg>
+`;
+  }
+
+  downloadSVG() {
+    if (!this.originalImage || !this.regionLabelMap) { this.toast('請先上傳圖片並生成', false); return; }
+    try {
+      const svg = this.buildSVG();
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      this.downloadBlob(blob, `zentangle-line-${Date.now()}.svg`);
+      this.toast('SVG 線稿已下載（可無限放大）');
+    } catch (err) {
+      console.error('[zentangle] svg export failed:', err);
+      this.toast('SVG 匯出失敗，請再試一次', false);
+    }
   }
 
   downloadBlob(blob, name) {

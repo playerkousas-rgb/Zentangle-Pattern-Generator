@@ -1,0 +1,4 @@
+/* Tailwind 建置期入口：npm run css → public/tailwind.css（已 commit，唔使 runtime CDN） */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
