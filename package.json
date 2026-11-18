@@ -1,6 +1,6 @@
 {
   "name": "zentangle-pattern-generator",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "description": "禪繞畫圖案產生器：上傳圖片，自動分區並填入 45 款禪繞圖案（純前端單頁工具）",

@@ -24,9 +24,16 @@
 | AI 生成圖案／AI 重繪 | 要 API key、要 server-side secret、香港 IP 直連被封 | 另開 Type C；本 app 保持零 key |
 | 完整向量重繪（把筆觸變 vector path） | 現時管線係點陣（pattern tile → canvas）；改寫等於重做 renderer | 先做「向量線稿」（已做），再評估 |
 | 47＋ 款圖案、圖案商店 | 每加一款要同步 5 處＋回歸測試；體積與維護成本 | 分批加，每次跑 e2e |
-| 多語介面（英／日） | 現有 repo 屬「既有」，L 規則唔追溯；字串 >300 條 | 立項時一次過做，見 readme docs/44 |
+| 多語介面（英／日） | **EXCEPTION: L1** — 2026-10 已上線，`docs/44` 唔追溯既有 App — 保留 README 英文簡介 — 持續 | 如需全站雙語，另行立項；現時冇語言切換掣 |
 | 使用者上傳自訂 SVG 圖案 | 安全（XSS／外部資源）＋ 版權不明 | 只接受純 path、消毒後本地使用 |
 | 後台統計／A-B test | 需要後端與 cookie 同意 | 只用 Vercel Analytics 匿名 snippet |
+
+## 發佈與入口（SG18／SG19）
+
+- 真理倉 `docs/51` §2 **B 組**：有本機作品，但每幅可匯出原 PNG；無 `/api`、無 Service Worker。Vite 由根 `index.html` 建置；`public/store_gate_v1.0.js` 原樣進 `dist/` 發佈根目錄。
+- `appKey: 'zentangle-pattern-generator'`、`mode: 'entry-gate'`、`portalIds: ['appstore']`、`silentPortalIds: ['library']`、`allowStandalone: true`、`autoRedirectSeconds: 0`；`supportNudge` 關，唔設 `trackEndpoint`。
+- 正式 host `zentangle-pattern-generator.vercel.app` 對 [`20261116-app-slug-seed.sql` 第 84 行](https://github.com/playerkousas-rgb/website/blob/4d2e4dd2b5bc2c42987f261117755243edf88b01/migrations/20261116-app-slug-seed.sql#L84) → SG18 slug `zentangle-pattern-generator`。只交俾 `ScoutStoreGate.getAppStoreUrl()` 組連結；主站自己處理讚好同收藏。
+- 唔改 `zt-favs` 或 `zt-gallery/works`。閘門只喺合資格入口入場時寫 `sessionStorage['zentangle-pattern-generator.store_pass']` 保同分頁重整；無新增持久儲存 key。
 
 ## 非功能底線
 

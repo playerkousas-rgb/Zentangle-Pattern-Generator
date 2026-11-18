@@ -3,7 +3,11 @@
 本專案採用 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/) 格式，
 版號跟 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
-## [未發布]
+## [未發布] — 1.3.0（2026-11-18）
+
+- 加入真理倉原版 `store_gate_v1.0.js`：APP STORE／圖書館頂層進入，直接開新分頁只見單一入口掣，已加入主畫面照用。SG18 使用頂欄回跳連結，唔阻礙繪圖或列印。
+- 保留原作品庫、最愛及 PNG 分享格式。相簿內儲存後即更新作品卡，並提示逐幅下載備份。
+- 修正頂欄標記、圖標快取路徑、lockfile／文件舊版號；CI 同本機共用 `verify`。
 
 ### 修正
 - **部署 build 失敗：`tailwindcss: command not found`（`[BUILD_UTILS_SPAWN_127]`）**。
