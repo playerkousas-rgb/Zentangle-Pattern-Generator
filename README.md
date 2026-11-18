@@ -6,14 +6,21 @@
 > export) runs **in your browser** — photos are never uploaded. Print-ready A4 / Zendala / Bijou
 > sheets and a local gallery are built in.
 >
-> 🔗 https://zentangle-pattern-generator.vercel.app · 版本 **v1.2.0**
+> Open **禪繞畫工具** from SCOUT APP STORE. To install, open the tool first, then use the browser’s **Add to Home Screen**.
 
 上傳一張圖片，自動提取主體、智能分區，並填入 45 款正統禪繞（Zentangle）圖案的**純前端**單頁工具。
 所有運算（去背、分區、填圖案、匯出）都在你的瀏覽器完成，**圖片不會上傳到任何伺服器**。
 
-- 🏷️ 目前版本：**v1.2.0**（審查 ＋ 建議落地，見 [`docs/REVIEW-2026-11-10.md`](docs/REVIEW-2026-11-10.md)）
-- 📦 執行期依賴：**0 個** · 建置產物：`dist/` ≈ **440 KB**
+- 🏷️ 目前版本：**v1.3.0**（[入口白名單與作品備份驗收記錄](docs/REVIEW-2026-11-18.md)；真機結果另列）
+- 📦 執行期依賴：**0 個** · 建置產物：`dist/` < **1 MB**
 - 🧾 授權：版權保留（見 [`LICENSE`](LICENSE)）；Zentangle® 為 Rick Roberts 與 Maria Thomas 的註冊商標，本工具與其無隸屬關係
+
+## 點樣開啟、保留作品
+
+- 由 **SCOUT APP STORE** 開「禪繞畫工具」，或由通告圖書館嘅工具連結入；喺新分頁直打正式網址只會見到一粒「前往 APP STORE」掣。要加入主畫面，先由入口進入本工具，再用瀏覽器選單加入。
+- 頂欄「❤️ 讚好／收藏」會開新分頁返主站嘅程式詳情卡；唔會代你撳讚好或收藏。圖鑑嘅 ⭐ 仍然只係呢部機嘅圖案最愛。
+- 作品相簿保留喺原本嘅瀏覽器同網域。換機、換瀏覽器或清除網站資料前，喺相簿**逐幅撳「下載」備份 PNG**。冇雲端同步、冇整冊匯入還原；iOS 主畫面同 Safari 亦可能唔共用作品庫。
+- 閘門設定與 slug 來源見 [`SCOPE.md`](SCOPE.md)；呢個係前端入口提示，唔係身份認證。
 
 ## 功能特色
 
@@ -59,12 +66,12 @@ vercel.json              ← Framework / Build / Output / 快取標頭
 - **無後端、無資料庫**：IndexedDB / localStorage 全在使用者瀏覽器端
 - **無任何前端框架**：不依賴 React/Vue；Tailwind 於建置期編譯成 10 KB CSS（唔再 load CDN）
 - **分析**：用 Vercel 官方零依賴 snippet `/_vercel/insights/script.js`，**不**裝 npm 套件
-- 建置產物 = `dist/`（`index.html` + `public/` 複本，共約 0.53 MB）
+- 建置產物 = `dist/`（`index.html` + `public/` 複本，含原版 `store_gate_v1.0.js`）
 
 ## 開發指令
 
 ```bash
-npm install        # 安裝開發依賴（只有 vite / typescript / eslint）
+npm ci --include=dev  # 依 lockfile 安裝建置及測試工具
 npm run dev        # 本機開發伺服器
 npm run check      # TypeScript 型別檢查（tsc -b）
 npm run lint       # ESLint（只覆蓋 .ts；inline JS 由 app_check 補驗）
@@ -72,13 +79,13 @@ npm run build      # 生產打包 → dist/（Vercel 部署的產物）
 npm run preview    # 本機預覽建置結果
 npm run css        # 由 src/tailwind.css 產生 public/tailwind.css（build 會自動跑；入口 build-css.mjs）
 
-npm test           # node:test：隱形水印 codec round-trip（直接測 index.html 內嘅碼）
-npm run test:e2e   # 真 Chromium：上載→生成→SVG／PNG→水印→作品集＋390/768/1440 截圖
-                   # （需本機 Chrome；可設 CHROME_PATH 或 BASE_URL 測部署）
+npm test           # node:test：原版閘門／設定、版號、隱形水印 codec
+npm run test:e2e   # Chromium 本機模擬：入口卡、主畫面、SG18、窄屏／列印、繪圖匯出、跨入口下載作品
+                   # 可設 CHROME_PATH 或 BASE_URL；唔會連線主站、唔代表真機驗收
 
 npm run audit      # ★ 交付前閘門：HTML 審計 + SEO + 圖標 + 版號 + 依賴 + 體積 + 死檔 + CSS
 npm run seo        # 只跑 SEO／GEO 靜態檢查
-npm run verify     # check → lint → build → audit（CI 跑同一條）
+npm run verify     # check → lint → test → build → app_check → css:check
 npm run icons      # 由 design/*.svg 重新產生 9 個圖標（需先 npm i --no-save sharp）
 ```
 
@@ -102,20 +109,16 @@ npm run verify
 10. HTML 引用的 icon／manifest 都有實檔
 11. Tailwind 建置期 CSS：檔案存在、≤ 60 KB、冇 runtime CDN、**每個用到的 class 都有 CSS**
 
-> 唯一「已記錄例外」：**V1 檔名版號**。Vercel 靜態站入口必須叫 `index.html`，
-> 不可以叫 `app_v1.1.0.html`；只要四處版號一致，閘門會降級做 INFO 並列印理由。
+**EXCEPTION: V1** — Vite／Vercel 入口固定叫 `index.html`。保留穩定網址，由 `app_check` 驗內文四處版號一致先放行；唔另建一份未受閘保護嘅 HTML。
 
 ## 版號政策（V1／V2）
 
-改版時**四處一齊改**，缺一會被 `npm run audit` 擋：
+改版時同步以下位置，並更新 `CHANGELOG.md`：
 
-| 位置 | 現值 |
+| 位置 | 格式／核對對象 |
 |---|---|
-| `index.html` 內 `const APP_VERSION` | `v1.1.0` |
-| `<meta name="app-version">` | `v1.1.0` |
-| 頁尾 `<span id="appVersion">` | `v1.1.0`（由常數覆寫，防靜態漏改） |
-| `package.json` `version` | `1.1.0` |
-| `CHANGELOG.md` | 新增一節 |
+| `package.json` → `version` | SemVer；`package-lock.json` 頂層及根 package 要一致 |
+| `index.html` → `APP_VERSION`、`<meta name="app-version">`、頁尾 `#appVersion` | 同一個 `v` 加 package 版號；靜態 HTML 同執行時都要一致 |
 
 ## 圖標（G11）
 

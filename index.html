@@ -2,6 +2,17 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <script src="/store_gate_v1.0.js"></script>
+  <script>
+    const storeEntry = typeof initStoreGate === 'function' ? initStoreGate({
+      appKey: 'zentangle-pattern-generator',
+      mode: 'entry-gate',
+      portalIds: ['appstore'],
+      silentPortalIds: ['library'],
+      allowStandalone: true,
+      autoRedirectSeconds: 0
+    }) : null;
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>禪繞畫工具｜上傳相片自動生成 Zentangle 圖案（45 款）</title>
 
@@ -10,7 +21,7 @@
   <meta name="keywords" content="禪繞畫,Zentangle,圖案產生器,自動分區,Zendala,填色稿,列印,pattern generator">
   <meta name="author" content="Scout System">
   <meta name="copyright" content="© SCOUT SYSTEM 2026. All rights reserved.">
-  <meta name="app-version" content="v1.2.0">
+  <meta name="app-version" content="v1.3.0">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#02133E">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -117,7 +128,10 @@
     .noscript-banner { background: #ff6b6b; color: #210000; font-weight: 700; text-align: center; padding: 12px 16px; }
     body.modal-open { overflow: hidden; }
     .pattern-item:focus-visible, .atlas-item:focus-visible, .upload-zone:focus-visible { outline: 3px solid #00d4ff; outline-offset: 2px; }
-    @media print { .mobile-action-bar, #toastContainer { display: none !important; } }
+    .header-actions { margin-inline-start: auto; justify-content: flex-end; }
+    .support-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 8px; font-size: 14px; white-space: nowrap; text-decoration: none; }
+    .support-btn[hidden] { display: none; }
+    @media print { .support-btn, .mobile-action-bar, #toastContainer { display: none !important; } }
 
     /* ===== 手機友善 / Mobile friendly ===== */
     html { -webkit-text-size-adjust: 100%; }
@@ -207,7 +221,7 @@
           <h1 class="text-3xl font-bold" style="color: #00d4ff;">禪繞畫工具</h1>
           <p style="color: rgba(255,255,255,0.5);" class="mt-1">High Quality Zentangle Pattern Generator</p>
         </div>
-        <div class="flex gap-2 flex-wrap">
+        <div class="header-actions flex gap-2 flex-wrap">
           <button id="guideBtn" class="btn-secondary px-4 py-3 rounded-lg inline-flex items-center gap-2" aria-label="新手指南">
             ❓<span class="hidden sm:inline text-sm">新手指南</span>
           </button>
@@ -226,9 +240,12 @@
             SVG 線稿
           </button>
           <button id="downloadBtn" class="btn-primary px-6 py-3 rounded-lg hidden lg:inline-flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          下載 PNG
-        </button>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            下載 PNG
+          </button>
+          <a id="storeSupportTop" class="btn-secondary support-btn" target="_blank" rel="noopener" hidden
+             title="前往主站讚好或收藏此程式（開新分頁）" aria-label="前往主站讚好或收藏此程式（開新分頁）">❤️ 讚好／收藏</a>
+        </div>
       </div>
     </header>
 
@@ -393,7 +410,7 @@
     </main>
 
     <footer class="max-w-7xl mx-auto mt-8 text-center">
-      <p class="footer-text">© SCOUT SYSTEM 2026. All rights reserved. · <span id="appVersion">v1.2.0</span></p>
+      <p class="footer-text">© SCOUT SYSTEM 2026. All rights reserved. · <span id="appVersion">v1.3.0</span></p>
       <p class="footer-text" style="margin-top: 6px; max-width: 640px; margin-left: auto; margin-right: auto;">所有運算（去背、分區、繪圖）都在你的瀏覽器完成，圖片不會上傳到任何伺服器。<br>Zentangle® 是 Rick Roberts 與 Maria Thomas 的註冊商標；本工具為獨立創作，與其無任何隸屬或授權關係。</p>
     </footer>
   </div>
@@ -477,7 +494,7 @@
       </div>
       <div id="galleryGrid" class="gallery-grid"></div>
       <p id="galleryEmpty" class="small-note" style="display: none;"></p>
-      <p class="small-note" style="margin-top: 10px;">作品只會儲存喺你部機入面（瀏覽器 IndexedDB），唔會上傳到任何伺服器。</p>
+      <p class="small-note" style="margin-top: 10px;">作品只存喺呢個瀏覽器，唔會上傳。換機或清除網站資料前，請逐幅撳「下載」備份 PNG；相簿唔會自動搬過去。</p>
     </div>
   </div>
 
@@ -519,7 +536,7 @@
 // ===== 雙版號 V1/V2：唯一真理 =====
 // 改版時四處一齊改：① 本常數 ② <meta name="app-version"> ③ 頁尾 #appVersion ④ package.json version
 // （檔名例外：Vercel 入口必須叫 index.html，見 README「版號」一節）
-const APP_VERSION = 'v1.2.0';
+const APP_VERSION = 'v1.3.0';
 
 // ===== <watermark-codec> =====
 // SCOUT SYSTEM 隱形水印 codec（DCT 中頻 QIM）— 與 drawscout_decoder 完全兼容。
@@ -764,7 +781,10 @@ class ZentangleGenerator {
     this.el('atlasBtn').onclick = () => this.openAtlas();
     this.el('atlasFavBtn').onclick = () => { if (this._atlasCur) this.toggleFav(this._atlasCur); };
     this.el('galleryBtn').onclick = () => this.openGallery();
-    this.el('gallerySaveBtn').onclick = () => this.saveToGallery();
+    this.el('gallerySaveBtn').onclick = async () => {
+      await this.saveToGallery();
+      this.renderGallery(); // 相簿開住儲存之後，即可逐幅下載備份
+    };
     this.el('barSaveBtn').onclick = () => this.saveToGallery();
     this.el('lbDownload').onclick = () => this.downloadBlob(this._lbItem && this._lbItem.blob);
     this.el('lbDelete').onclick = () => this.deleteFromGallery(this._lbItem && this._lbItem.id);
@@ -2436,7 +2456,15 @@ class ZentangleGenerator {
   }
 }
 
-new ZentangleGenerator();
+// 攔截卡顯示時唔啟動圖案處理器，亦唔開用家嘅作品庫。
+if (!storeEntry || storeEntry.allowed) {
+  const support = document.getElementById('storeSupportTop');
+  if (support && typeof window.ScoutStoreGate?.getAppStoreUrl === 'function') {
+    support.href = ScoutStoreGate.getAppStoreUrl('zentangle-pattern-generator');
+    support.hidden = false;
+  }
+  new ZentangleGenerator();
+}
 </script>
 </body>
 </html>

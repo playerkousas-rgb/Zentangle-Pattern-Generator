@@ -1,4 +1,4 @@
-# AGENTS.md — AI／工程師施工邊界（v1.2.0）
+# AGENTS.md — AI／工程師施工邊界（v1.3.0）
 
 > 交俾 AI 改之前先讀呢 40 行。目標：唔好為咗「交功課」而破壞體積、版權、版號同單檔架構。
 
@@ -58,6 +58,7 @@ git commit -m "feat(scope): 做咩"
 index.html                應用本體（UI + 邏輯 + 水印 codec + SVG 線稿）
 build-css.mjs             npm run css 入口（缺 Tailwind CLI 時保底；部署必需）
 .npmrc                    include=dev（唔可以被略過，見 §7）
+public/store_gate_v1.0.js  真理倉原檔（Vite 原樣複製到 dist/；唔好直接改）
 public/patterns/          45 款圖案 SVG（部署必需）
 public/icons/             9 個圖標（部署必需）
 public/tailwind.css       建置產物（committed；由 npm run css 產生）

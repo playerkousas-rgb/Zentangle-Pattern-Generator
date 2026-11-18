@@ -16,6 +16,8 @@
  * 退出碼：0 = 全部 PASS；1 = 有 FAIL。
  */
 import puppeteer from 'puppeteer-core';
+import { createHash } from 'node:crypto';
+import { checkStoreEntry } from './store-entry.e2e.mjs';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -79,7 +81,9 @@ async function waitDownload(ext, before) {
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--hide-scrollbars'],
+  // 只准測試站連網；SG18 真開新分頁，但唔會載入或寫入線上主站。
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--hide-scrollbars', '--no-proxy-server',
+    `--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE ${new URL(BASE).hostname}`],
 });
 
 let exitCode = 1;
@@ -102,14 +106,15 @@ try {
     await client.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: DL });
   }
 
+  await checkStoreEntry(page, BASE, check);
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
-  await page.goto(BASE + '/', { waitUntil: 'networkidle2', timeout: 60000 });
 
   /* ---------- 靜態／樣式 ---------- */
   const items = await page.$$eval('.pattern-item', els => els.length);
   check('圖案格 46 個（45 款 + 空白）', items === 46, String(items));
   const ver = await page.$eval('#appVersion', el => el.textContent.trim());
-  check('頁尾版號由 APP_VERSION 寫入', ver === 'v1.2.0', ver);
+  const expectedVersion = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  check('頁尾版號同發佈版號一致', ver === `v${expectedVersion}`, ver);
   const gradient = await page.$eval('.btn-primary', el => getComputedStyle(el).backgroundImage);
   check('Tailwind 建置期 CSS 生效（btn-primary 漸變）', /gradient/.test(gradient), gradient.slice(0, 48));
   const twScript = await page.evaluate(() => [...document.scripts].some(s => /tailwindcss\.com/.test(s.src)));
@@ -233,7 +238,29 @@ try {
     .catch(() => {});
   const badge = await page.$eval('#galleryCount', el => el.textContent.trim());
   check('儲存到作品集（badge = 1）', badge === '1', badge);
+  await page.waitForSelector('#galleryGrid [data-a="dl"]', { visible: true });
   await page.keyboard.press('Escape');
+
+  // B 組：新分頁改由圖書館入，原本作品仍可逐幅下載；下載檔要同庫內原 PNG 一樣。
+  const galleryTab = await browser.newPage();
+  const referer = await page.evaluate(() => ScoutStoreGate.getPortal('library').url);
+  await galleryTab.goto(BASE + '/', { referer, referrerPolicy: 'origin' });
+  await galleryTab.click('#galleryBtn');
+  const download = await galleryTab.waitForSelector('#galleryGrid [data-a="dl"]', { visible: true });
+  const storedHash = await galleryTab.evaluate(async () => {
+    const db = await ZentangleGenerator.prototype.openGalleryDB();
+    try {
+      const [item] = await ZentangleGenerator.prototype.idbAll(db);
+      const digest = await crypto.subtle.digest('SHA-256', await item.blob.arrayBuffer());
+      return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+    } finally { db.close(); }
+  });
+  const beforeBackup = readdirSync(DL);
+  await download.click();
+  const backup = readFileSync(await waitDownload('.png', beforeBackup));
+  check('跨入口仍見原作品；相簿下載與原 PNG 位元組相同', backup.toString('ascii', 1, 4) === 'PNG' &&
+    createHash('sha256').update(backup).digest('hex') === storedHash);
+  await galleryTab.close();
 
   /* ---------- 響應式截圖（人手視覺回歸用） ---------- */
   for (const [w, h, name] of [[768, 1024, '07-tablet-768'], [390, 844, '08-mobile-390']]) {
